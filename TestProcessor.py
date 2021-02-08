@@ -69,7 +69,7 @@ class MyProcessor(processor.ProcessorABC):
         selection = processor.PackedSelection()
 
 
-        from IPython import embed;embed()
+        #from IPython import embed;embed()
 
         #branches = file.get("nominal")
         dataset= events.dataset
@@ -114,6 +114,28 @@ class MyProcessor(processor.ProcessorABC):
         n_jets =events.nJet
         n_btags = events.nMediumDFBTagJet
         jet_mass_1 = events.JetMass[:,0]
+
+        Dphi= events.DeltaPhi
+        LT = events.LT
+        HT=events.HT
+        sorted_jets = ak.sort(events.JetPt, ascending=False)
+
+        #from IPython import embed;embed()
+
+        baseline_selection= (
+            (lep_pt > 25)
+            #&veto lepton > 10
+            #&No isolated track with p T ≥ 10 GeV and M T2 < 60 GeV (80 GeV) for hadronic (leptonic) tracks
+            &(sorted_jets[:,0] > 80)
+            &(LT>250)
+            &(HT>500)
+            &(n_jets>=3)
+            )
+        zero_b = (n_btags==0)
+        multi_b = (n_btags>=1)
+
+
+
 
         #cut = (ak.num(muons) == 2) & (ak.sum(muons.charge) == 0)
         # add first and second muon in every event together
