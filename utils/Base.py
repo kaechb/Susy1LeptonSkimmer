@@ -37,7 +37,7 @@ class BaseProcessor(processor.ProcessorABC):
         self.category_axis = hist.Cat("category", "Category selection")
         self.syst_axis = hist.Cat("systematic", "Shift of systematic uncertainty")
         self._accumulator = dict_accumulator(
-            n_events=defaultdict_accumulator(int),
+            n_events=defaultdict_accumulator(float),
             sum_gen_weights=defaultdict_accumulator(float),
             object_cutflow=defaultdict_accumulator(int),
             cutflow=hist.Hist(
@@ -114,7 +114,6 @@ class Histogramer(BaseProcessor):
         output = self.accumulator.identity()
         selection = processor.PackedSelection()
 
-
         #from IPython import embed;embed()
 
         #branches = file.get("nominal")
@@ -156,14 +155,11 @@ class Histogramer(BaseProcessor):
         HT=events.HT
         sorted_jets = ak.sort(events.JetPt, ascending=False)
 
-        #from IPython import embed;embed()
-
         baseline_selection= (
             (lep_pt > 25)
             #&veto lepton > 10
             #&No isolated track with p T ≥ 10 GeV and M T2 < 60 GeV (80 GeV) for hadronic (leptonic)
-
-                        &(sorted_jets[:,0] > 80)
+            &(sorted_jets[:,0] > 80)
             &(LT>250)
             &(HT>500)
             &(n_jets>=3)
@@ -171,9 +167,10 @@ class Histogramer(BaseProcessor):
 
         zero_b = (n_btags==0)
         multi_b = (n_btags>=1)
+        selection.add("baseline", ak.to_numpy(baseline_selection))
+
 
         """
-        output["sumw"][dataset] += len(met)
         output["met"].fill(
             dataset=dataset,
             met=met[lep_selection],
@@ -200,8 +197,11 @@ class Histogramer(BaseProcessor):
             values={}
             values["dataset"]=dataset
             values[key]=eval(key)
+            #weight = weights.weight()[cut]
+            #values["weight"] = weight
             output["histograms"][key].fill(**values)
 
+        #output["n_events"] = len(METPt)
 
 	    # test
         return output
