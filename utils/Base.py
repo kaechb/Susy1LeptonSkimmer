@@ -80,35 +80,48 @@ class BaseProcessor(processor.ProcessorABC):
             else:
                 return "MC"
 
-class Histogramer(BaseProcessor):
+class BaseSelection:
 
-    def __init__(self):
-        super().__init__()
+    common = ("energy", "x", "y", "z")  # , "pt", "eta")
+    hl = (
+        "m_bb",
+        "ht",
+        "dr_bb",
+        "dphi_bb",
+        "max_m_jj",
+        "n_btag",
+        "MET",
+        "pTjj",
+        "njets",
+        "bb_pt",
+        # "bb_inv_m",
+        "W_mt",
+        "WH_mt",
+    )
 
-        self._accumulator["histograms"] = dict_accumulator(
-            {
-                var[0]: hist.Hist(
-                    "Counts",
-                    self.dataset_axis,
-                    #self.category_axis,
-                    #self.syst_axis,
-                    hist.Bin(
-                        var[0],
-                        var[1],
-                        var[2][0],
-                        var[2][1],
-                        var[2][2],
-                    ),
-                )
-                for var in cfg.variables().values()
-            }
+    # dtype = np.float32
+    debug_dataset = (
+        # "QCD_HT100to200"  # "TTTT""QCD_HT200to300"  # "TTTo2L2Nu"  # "WWW_4F"  # "data_B_ee"
+    )
+
+    def obj_arrays(self, X, n, extra=()):
+        assert 0 < n and n == int(n)
+        cols = self.common + extra
+        return np.stack(
+            [getattr(X, a).pad(n, clip=True).fillna(0).regular().astype(np.float32) for a in cols],
+            axis=-1,
         )
 
-    @property
-    def accumulator(self):
-        return self._accumulator
+    def arrays(self, X):
+        return dict(
+            lep=self.obj_arrays(X["good_leptons"], 1, ("pdgId", "charge")),
+            jet=self.obj_arrays(X["good_jets"], 4, ("btagDeepFlavB",)),
+            hl=np.stack([X[var].astype(np.float32) for var in self.hl], axis=-1),
+            meta=X["event"].astype(np.int64),
+        )
 
-    def process(self, events):
+
+    def select(self, events):
 
         #set up stuff to fill
         output = self.accumulator.identity()
@@ -169,6 +182,48 @@ class Histogramer(BaseProcessor):
         multi_b = (n_btags>=1)
         selection.add("baseline", ak.to_numpy(baseline_selection))
 
+        return locals()
+
+
+
+class Histogramer(BaseProcessor, BaseSelection):
+
+    def __init__(self):
+        super().__init__()
+
+        self._accumulator["histograms"] = dict_accumulator(
+            {
+                var[0]: hist.Hist(
+                    "Counts",
+                    self.dataset_axis,
+                    #self.category_axis,
+                    #self.syst_axis,
+                    hist.Bin(
+                        var[0],
+                        var[1],
+                        var[2][0],
+                        var[2][1],
+                        var[2][2],
+                    ),
+                )
+                for var in cfg.variables().values()
+            }
+        )
+
+    @property
+    def accumulator(self):
+        return self._accumulator
+
+    # def select(self, events):
+        # out = super().self.select(events)
+
+        # from IPython import embed;embed()
+
+    def process(self, events):
+        output = self.accumulator.identity()
+        out = self.select(events)
+
+        #from IPython import embed;embed()
 
         """
         output["met"].fill(
@@ -190,13 +245,12 @@ class Histogramer(BaseProcessor):
         )
         """
 
-
         #from IPython import embed;embed()
 
         for key in cfg.variables().keys():
             values={}
-            values["dataset"]=dataset
-            values[key]=eval(key)
+            values["dataset"]=out["dataset"]
+            values[key]=out[key]
             #weight = weights.weight()[cut]
             #values["weight"] = weight
             output["histograms"][key].fill(**values)

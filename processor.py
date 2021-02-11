@@ -19,7 +19,7 @@ from utils.Base import Histogramer
 tic=time()
 
 # for jet_ lep_ variables
-new_test_file = "~/nfs/dust/cms/user/frengelk/Testing/new_TTJets_HT_1200to2500/new_TTJets_HT_1200to2500_1.root"
+new_test_file = "/nfs/dust/cms/user/frengelk/Testing/new_TTJets_HT_1200to2500_1.root"
 
 # unchanged syntax
 test_file = "/nfs/dust/cms/user/frengelk/Testing/TTJets_HT_1200to2500_1.root"
@@ -41,7 +41,7 @@ out = processor.run_uproot_job(
     #metadata_cache = {name: [name],}
     )
 
-from IPython import embed;embed()
 print(np.round(time()-tic,4), "s")
 print(out)
 
+from IPython import embed;embed()
