@@ -14,9 +14,9 @@ from time import time
 from coffea.nanoevents.methods import candidate
 ak.behavior.update(candidate.behavior)
 
-from utils.Base import Histogramer
+from utils.Base import *
 
-tic=time()
+
 
 # for jet_ lep_ variables
 new_test_file = "/nfs/dust/cms/user/frengelk/Testing/new_TTJets_HT_1200to2500_1.root"
@@ -29,19 +29,35 @@ fileset = {"tt" : [test_file],
           # "t_t": [new_test_file]
            }
 
-process_inst = Histogramer()
+hist_inst = Histogramer()
 
-out = processor.run_uproot_job(
-    fileset,
-    treename="nominal",
-    processor_instance=process_inst,
-    executor=processor.iterative_executor,
-    #{"schema": NanoAODSchema},
-    #maxchunks=4,
-    #metadata_cache = {name: [name],}
-    )
 
-print(np.round(time()-tic,4), "s")
-print(out)
+def array_production(fileset, np_path):
+
+    tic=time()
+
+    export_inst = ArrayExporter()
+
+    out = processor.run_uproot_job(
+        fileset,
+        treename="nominal",
+        processor_instance=export_inst,
+        executor=processor.iterative_executor,
+        #{"schema": NanoAODSchema},
+        #maxchunks=4,
+        #metadata_cache = {name: [name],}
+        )
+
+    np.save(np_path, out["arrays"]["hl"])
+    #print(out)
+
+    print(np.round(time()-tic,4), "s")
+
+    return out
+
+array_production(fileset, "/nfs/dust/cms/user/frengelk/Testing/array.npy")
+
+a=np.load("/nfs/dust/cms/user/frengelk/Testing/array.npy", allow_pickle=True)
+print(a)
 
 from IPython import embed;embed()

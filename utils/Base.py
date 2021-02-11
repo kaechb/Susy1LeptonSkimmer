@@ -1,7 +1,7 @@
 import coffea
 #from coffea.processor import ProcessorABC
 #import law
-import numpy
+import numpy as np
 import uproot4 as up
 import awkward1 as ak
 from coffea.nanoevents import NanoEventsFactory,  NanoAODSchema
@@ -82,21 +82,10 @@ class BaseProcessor(processor.ProcessorABC):
 
 class BaseSelection:
 
-    common = ("energy", "x", "y", "z")  # , "pt", "eta")
+    #common = ("energy", "x", "y", "z")  # , "pt", "eta")
     hl = (
-        "m_bb",
-        "ht",
-        "dr_bb",
-        "dphi_bb",
-        "max_m_jj",
-        "n_btag",
-        "MET",
-        "pTjj",
-        "njets",
-        "bb_pt",
-        # "bb_inv_m",
+        "METPt",
         "W_mt",
-        "WH_mt",
     )
 
     # dtype = np.float32
@@ -106,7 +95,7 @@ class BaseSelection:
 
     def obj_arrays(self, X, n, extra=()):
         assert 0 < n and n == int(n)
-        cols = self.common + extra
+        cols = self.hl
         return np.stack(
             [getattr(X, a).pad(n, clip=True).fillna(0).regular().astype(np.float32) for a in cols],
             axis=-1,
@@ -114,10 +103,10 @@ class BaseSelection:
 
     def arrays(self, X):
         return dict(
-            lep=self.obj_arrays(X["good_leptons"], 1, ("pdgId", "charge")),
-            jet=self.obj_arrays(X["good_jets"], 4, ("btagDeepFlavB",)),
+            #lep=self.obj_arrays(X["good_leptons"], 1, ("pdgId", "charge")),
+            #jet=self.obj_arrays(X["good_jets"], 4, ("btagDeepFlavB",)),
             hl=np.stack([X[var].astype(np.float32) for var in self.hl], axis=-1),
-            meta=X["event"].astype(np.int64),
+            #meta=X["event"].astype(np.int64),
         )
 
 
@@ -184,6 +173,33 @@ class BaseSelection:
 
         return locals()
 
+class array_accumulator(column_accumulator):
+    """ column_accumulator with delayed concatenate """
+
+    def __init__(self, value):
+        self._empty = value[:0]
+        self._value = [value]
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.value)
+
+    def identity(self):
+        return self.__class__(self._empty)
+
+    def add(self, other):
+        assert self._empty.shape == other._empty.shape
+        assert self._empty.dtype == other._empty.dtype
+        self._value.extend(v for v in other._value if len(v))
+
+    @property
+    def value(self):
+        if len(self._value) > 1:
+            self._value = [np.concatenate(self._value)]
+        return self._value[0]
+
+    def __len__(self):
+        return sum(map(len, self._value))
+
 
 
 class Histogramer(BaseProcessor, BaseSelection):
@@ -225,28 +241,6 @@ class Histogramer(BaseProcessor, BaseSelection):
 
         #from IPython import embed;embed()
 
-        """
-        output["met"].fill(
-            dataset=dataset,
-            met=met[lep_selection],
-        )
-	    output["lep_pt"].fill(
-            dataset=dataset,
-            lep_pt=lep_pt[lep_selection],
-        )
-
-	    output["WBosonMt"].fill(
-            dataset=dataset,
-            WBosonMt=W_mt[lep_selection],
-        )
-	    output["jet_mass_1"].fill(
-            dataset=dataset,
-            jet_mass_1=jet_mass_1[lep_selection],
-        )
-        """
-
-        #from IPython import embed;embed()
-
         for key in cfg.variables().keys():
             values={}
             values["dataset"]=out["dataset"]
@@ -262,3 +256,68 @@ class Histogramer(BaseProcessor, BaseSelection):
 
     def postprocess(self, accumulator):
         return accumulator
+
+
+
+
+class ArrayExporter(BaseProcessor, BaseSelection):
+    output = "*.npy"
+    dtype = None
+    sep = "_"
+
+    def __init__(self):
+        super().__init__()
+
+        self._accumulator["arrays"] = dict_accumulator()
+
+    # def arrays(self, select_output):
+        # """
+        # select_output is the output of self.select
+        # this function should return an dict of numpy arrays, the "weight" key is reserved
+        # """
+        # pass
+
+    def categories(self, select_output):
+        selection = select_output.get("selection")
+        categories = select_output.get("categories")
+        return (
+            {cat: selection.all(*cuts) for cat, cuts in categories.items()}
+            if selection and categories
+            else {"all": slice(None)}
+        )
+
+    def select(self, events): #, unc, shift):
+        out = super().select(events) #, unc, shift)
+        #dataset = self.get_dataset(events)
+        #(process,) = dataset.processes.values()
+        #xsec_weight = (
+        #    1
+        #    if process.is_data
+        #    else process.xsecs[13].nominal * self.config.campaign.get_aux("lumi")
+        #)
+        #out["weights"].add("xsec", xsec_weight)
+        return out
+
+
+    def process(self, events):
+        select_output = self.select(events) #, unc="nominal", shift=None)
+        #categories = self.categories(select_output)
+        output = select_output["output"]
+
+        #from IPython import embed;embed()
+
+        arrays = self.arrays(select_output)
+        if self.dtype:
+            arrays = {key: array.astype(self.dtype) for key, array in arrays.items()}
+
+        output["arrays"] = dict_accumulator(
+                    {key: array_accumulator(array) for key, array in arrays.items()
+            }
+        )
+
+        return output
+
+    def postprocess(self, accumulator):
+        return accumulator
+
+
