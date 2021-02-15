@@ -1,3 +1,5 @@
+from IPython import embed
+from utils.Base import *
 import coffea
 #from coffea.processor import ProcessorABC
 #import law
@@ -14,10 +16,6 @@ from time import time
 from coffea.nanoevents.methods import candidate
 ak.behavior.update(candidate.behavior)
 
-from utils.Base import *
-
-
-
 # for jet_ lep_ variables
 new_test_file = "/nfs/dust/cms/user/frengelk/Testing/new_TTJets_HT_1200to2500_1.root"
 
@@ -25,16 +23,17 @@ new_test_file = "/nfs/dust/cms/user/frengelk/Testing/new_TTJets_HT_1200to2500_1.
 test_file = "/nfs/dust/cms/user/frengelk/Testing/TTJets_HT_1200to2500_1.root"
 
 name = test_file.split('/')[-1].split('.')[0]
-fileset = {"tt" : [test_file],
-          # "t_t": [new_test_file]
-           }
+fileset = {
+    "tt": [test_file],
+    # "t_t": [new_test_file]
+}
 
 hist_inst = Histogramer()
 
 
 def array_production(fileset, np_path):
 
-    tic=time()
+    tic = time()
 
     export_inst = ArrayExporter()
 
@@ -44,20 +43,21 @@ def array_production(fileset, np_path):
         processor_instance=export_inst,
         executor=processor.iterative_executor,
         #{"schema": NanoAODSchema},
-        #maxchunks=4,
+        # maxchunks=4,
         #metadata_cache = {name: [name],}
-        )
+    )
 
     np.save(np_path, out["arrays"]["hl"])
-    #print(out)
+    # print(out)
 
-    print(np.round(time()-tic,4), "s")
+    print(np.round(time() - tic, 4), "s")
 
     return out
 
+
 array_production(fileset, "/nfs/dust/cms/user/frengelk/Testing/array.npy")
 
-a=np.load("/nfs/dust/cms/user/frengelk/Testing/array.npy", allow_pickle=True)
+a = np.load("/nfs/dust/cms/user/frengelk/Testing/array.npy", allow_pickle=True)
 print(a)
 
-from IPython import embed;embed()
+embed()
