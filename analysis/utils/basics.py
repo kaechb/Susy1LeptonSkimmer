@@ -190,7 +190,6 @@ def copy_trees(src, dst, name_pattern="*", force=False):
     return dst
 
 
-
 def SetTDRStyle():
     """Sets the PubComm recommended style
     Just a copy of <http://ghm.web.cern.ch/ghm/plots/MacroExample/tdrstyle.C>

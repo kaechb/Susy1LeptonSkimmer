@@ -5,14 +5,17 @@ from luigi import Parameter, BoolParameter
 from tasks.basetasks import *
 import json
 
+
 class DownloadFiles(ConfigTask):
+
 
 class DownloadFilesWrapper(CampaignTask, law.WrapperTask):
 
+
 class WriteFileset(AnalysisTask):
 
-    #def requires(self):
-        #te
+    # def requires(self):
+    # te
 
     def output(self):
         return self.local_target("fileset.json")
