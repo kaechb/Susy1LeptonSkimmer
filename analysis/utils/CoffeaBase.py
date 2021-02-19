@@ -27,9 +27,9 @@ class BaseProcessor(processor.ProcessorABC):
     # jes_shifts = False
     # dataset_shifts = False
 
-    def __init__(self):
+    def __init__(self, task):
         # self.publish_message = task.publish_message if task.debug else None
-        # self.config = task.config_inst
+        self.config = task.config_inst
         # self.corrections = task.load_corrections()
 
         self.dataset_axis = hist.Cat("dataset", "Primary dataset")
@@ -209,25 +209,28 @@ class array_accumulator(column_accumulator):
 
 
 class Histogramer(BaseProcessor, BaseSelection):
-    def __init__(self):
-        super().__init__()
+    def variables(self):
+        return self.config.variables
+
+    def __init__(self, task):
+        super().__init__(task)
 
         self._accumulator["histograms"] = dict_accumulator(
             {
-                var[0]: hist.Hist(
+                var.name: hist.Hist(
                     "Counts",
                     self.dataset_axis,
                     # self.category_axis,
                     # self.syst_axis,
                     hist.Bin(
-                        var[0],
-                        var[1],
-                        var[2][0],
-                        var[2][1],
-                        var[2][2],
+                        var.name,
+                        var.x_title,
+                        var.binning[0],
+                        var.binning[1],
+                        var.binning[2],
                     ),
                 )
-                for var in cfg.variables().values()
+                for var in self.variables()
             }
         )
 
@@ -244,11 +247,8 @@ class Histogramer(BaseProcessor, BaseSelection):
         output = self.accumulator.identity()
         out = self.select(events)
 
-        from IPython import embed
-
-        embed()
-
-        for key in self.config_inst.variables.keys():
+        # from IPython import embed;embed()
+        for key in self.variables().names():
             values = {}
             values["dataset"] = out["dataset"]
             values[key] = out[key]

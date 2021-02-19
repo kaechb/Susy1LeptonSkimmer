@@ -11,14 +11,17 @@ import time
 import numpy as np
 
 # other modules
-from tasks.basetasks import AnalysisTask
+from tasks.basetasks import AnalysisTask, ConfigTask
 from utils.CoffeaBase import *
 from tasks.makefiles import WriteFileset
 
 
-class CoffeaProcessor(AnalysisTask):
+class CoffeaProcessor(ConfigTask):  # AnalysisTask):
     processor = Parameter(default="ArrayExporter")
     debug = BoolParameter()
+
+    def __init__(self, *args, **kwargs):
+        super(CoffeaProcessor, self).__init__(*args, **kwargs)
 
     def requires(self):
         return WriteFileset.req(self)
@@ -28,11 +31,10 @@ class CoffeaProcessor(AnalysisTask):
     # self.input()["corrections"].items()}
 
     def output(self):
-    	out="array.npy"
-    	if self.processor == "Histogramer":
-                 out = "hists.coffea"
-
-        return self.local_target("array.npy")
+        out = "array.npy"
+        if self.processor == "Histogramer":
+            out = "hists.coffea"
+        return self.local_target(out)
 
     def store_parts(self):
         parts = (self.analysis_choice, self.processor)
@@ -41,7 +43,7 @@ class CoffeaProcessor(AnalysisTask):
         return super(CoffeaProcessor, self).store_parts() + parts
 
     def run(self):
-
+        # from IPython import embed;embed()
         with open(self.input().path, "r") as read_file:
             fileset = json.load(read_file)
 
@@ -59,9 +61,9 @@ class CoffeaProcessor(AnalysisTask):
         # logger.warning("skipping empty datasets: %s", ", ".join(map(str, sorted(empty))))
 
         if self.processor == "ArrayExporter":
-            processor_inst = ArrayExporter()
+            processor_inst = ArrayExporter(self)
         if self.processor == "Histogramer":
-            processor_inst = Histogramer()
+            processor_inst = Histogramer(self)
 
         tic = time.time()
 
@@ -91,4 +93,8 @@ class CoffeaProcessor(AnalysisTask):
         # save outputs
         self.output().parent.touch()
         path = self.output().path
-        np.save(path, out["arrays"]["hl"])
+
+        if self.processor == "ArrayExporter":
+            np.save(path, out["arrays"]["hl"])
+        if self.processor == "Histogramer":
+            self.output().dump(out["histograms"])
