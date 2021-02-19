@@ -3,7 +3,7 @@ def setup_variables(cfg):
     # each needs a name, a Matplotlib x title and a (#bins, start, end) binning
 
     cfg.add_variable(
-        name="MET",
+        name="METPt",
         expression="METPt",
         binning=(30, 0.0, 750),
         unit="GeV",

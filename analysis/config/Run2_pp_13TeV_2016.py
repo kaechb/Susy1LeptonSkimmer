@@ -8,9 +8,6 @@ import scinum as sn
 # campaign
 campaign = od.Campaign("Run2_pp_13TeV_2016", 1, ecm=13, bx=25)
 
-campaign.set_aux("lumi", 35922.0)
-
-
 # base config
 
 base_config = cfg = od.Config(campaign)
@@ -30,3 +27,5 @@ cfg.set_aux(
         }
     },
 )
+
+cfg.set_aux("lumi", 35922.0)

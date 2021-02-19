@@ -13,14 +13,7 @@ import order as od
 import importlib
 
 law.contrib.load(
-    "numpy",
-    "tasks",
-    "root",
-    "slack",
-    "telegram",
-    "wlcg",
-    "htcondor",
-    "hdf5",  # , "coffea"
+    "numpy", "tasks", "root", "slack", "telegram", "wlcg", "htcondor", "hdf5", "coffea"
 )
 
 
@@ -78,7 +71,11 @@ class CampaignTask(BaseTask):
 
 class AnalysisTask(CampaignTask):
 
-    analysis_id = "mj"  # os.environ["DHA_ANALYSIS_ID"]
+    analysis_id = "mj"
+    # luigi.Parameter(
+    # default="mj",
+    # description="type of analysis, start with mj",
+    # ) # os.environ["DHA_ANALYSIS_ID"]
 
     task_namespace = "{}".format(analysis_id)
 
@@ -98,19 +95,15 @@ class AnalysisTask(CampaignTask):
 
 
 class ConfigTask(AnalysisTask):
-
-    config = "singletop_opendata_2011"
-
     def __init__(self, *args, **kwargs):
         super(ConfigTask, self).__init__(*args, **kwargs)
+        self.config_inst = self.analysis_inst.get_config(self.campaign_name)
 
-        # store the campaign and config instances
-        self.config_inst = self.analysis_inst.get_config(self.config)
-        self.campaign_inst = self.config_inst.campaign
-
-    @property
     def store_parts(self):
-        return super(ConfigTask, self).store_parts + (self.config,)
+        parts = (self.analysis_choice, self.campaign_name, self.__class__.__name__)
+        if self.version is not None:
+            parts += (self.version,)
+        return parts
 
 
 class ShiftTask(ConfigTask):
