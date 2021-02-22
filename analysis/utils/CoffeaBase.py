@@ -33,9 +33,9 @@ class BaseProcessor(processor.ProcessorABC):
         # self.corrections = task.load_corrections()
 
         self.dataset_axis = hist.Cat("dataset", "Primary dataset")
-        self.dataset_shift_axis = hist.Cat("dataset_shift", "Dataset shift")
+        # self.dataset_shift_axis = hist.Cat("dataset_shift", "Dataset shift")
         self.category_axis = hist.Cat("category", "Category selection")
-        self.syst_axis = hist.Cat("systematic", "Shift of systematic uncertainty")
+        # self.syst_axis = hist.Cat("systematic", "Shift of systematic uncertainty")
         self._accumulator = dict_accumulator(
             n_events=defaultdict_accumulator(float),
             sum_gen_weights=defaultdict_accumulator(float),
@@ -43,6 +43,7 @@ class BaseProcessor(processor.ProcessorABC):
             cutflow=hist.Hist(
                 "Counts",
                 self.dataset_axis,
+                self.category_axis,
                 self.category_axis,
                 hist.Bin("cutflow", "Cut index", 10, 0, 10),
             ),
@@ -177,6 +178,13 @@ class BaseSelection:
         multi_b = n_btags >= 1
         selection.add("baseline", ak.to_numpy(baseline_selection))
 
+        common = ["baseline_selection", "lep_selection"]
+
+        categories = dict(
+            N0b=common + ["zero_b"],
+            N1b=common + ["multi_b"],
+        )
+
         return locals()
 
 
@@ -220,7 +228,7 @@ class Histogramer(BaseProcessor, BaseSelection):
                 var.name: hist.Hist(
                     "Counts",
                     self.dataset_axis,
-                    # self.category_axis,
+                    self.category_axis,
                     # self.syst_axis,
                     hist.Bin(
                         var.name,
@@ -247,14 +255,24 @@ class Histogramer(BaseProcessor, BaseSelection):
         output = self.accumulator.identity()
         out = self.select(events)
 
-        # from IPython import embed;embed()
-        for key in self.variables().names():
-            values = {}
-            values["dataset"] = out["dataset"]
-            values[key] = out[key]
-            # weight = weights.weight()[cut]
-            # values["weight"] = weight
-            output["histograms"][key].fill(**values)
+        for var_name in self.variables().names():
+            for cat in out["categories"].keys():
+                # value = out[var_name]
+                # generate mask for variable values
+                mask = np.ones(len(out[var_name]), dtype=bool)
+                for cut in out["categories"][cat]:
+                    mask = mask & out[cut]
+                    # value = value[out[cut]]
+
+                # from IPython import embed;embed()
+
+                values = {}
+                values["dataset"] = out["dataset"]
+                values["category"] = cat
+                values[var_name] = out[var_name][mask]
+                # weight = weights.weight()[cut]
+                # values["weight"] = weight
+                output["histograms"][var_name].fill(**values)
 
         # output["n_events"] = len(METPt)
 
