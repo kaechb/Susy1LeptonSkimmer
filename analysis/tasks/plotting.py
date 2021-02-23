@@ -5,7 +5,7 @@ import os
 import law
 import order as od
 import law.contrib.coffea
-from luigi import BoolParameter, Parameter
+import luigi
 import coffea
 import json
 import time
@@ -14,17 +14,28 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import mplhep as hep
 
+
 # other modules
 from tasks.basetasks import *
 from tasks.coffea import CoffeaProcessor
 
 
 class PlotCoffeaHists(ConfigTask):
+
+    log_scale = luigi.BoolParameter()
+    unblinded = luigi.BoolParameter()
+    scale_signal = luigi.IntParameter(default=1)
+
     def requires(self):
         return CoffeaProcessor.req(self, processor="Histogramer")
 
     def output(self):
-        return self.local_target("hists.pdf")
+        path = ""
+        if self.log_scale:
+            path += "_log"
+        if self.unblinded:
+            path += "_data"
+        return self.local_target("hists{}.pdf".format(path))
 
     def run(self):
         inp = self.input().load()
@@ -46,10 +57,18 @@ class PlotCoffeaHists(ConfigTask):
 
                     # from IPython import embed;embed()
 
-                    ax.set_title("{0}: {1}".format(cat, var.name))
+                    # ax.set_title("{0}: {1}".format(cat, var.name))
+                    # ax.autoscale(axis="x", tight=True)
+
+                    if self.log_scale:
+                        ax.set_yscale("log")
+                        ax.set_ylim(0.0001, 1e6)
+
                     # if more datasets: FIXME
                     coffea.hist.plot1d(
-                        inp[var.name][("tt", cat)].project(var.name), ax=ax
+                        inp[var.name][("tt", cat)].project(var.name),
+                        ax=ax,
+                        clear=True,
                     )
                     hep.set_style("CMS")
                     hep.cms.label(
@@ -58,7 +77,15 @@ class PlotCoffeaHists(ConfigTask):
                         loc=0,
                         ax=ax,
                     )
-                    plt.tight_layout()
 
+                    leg = ax.legend(
+                        title="{0}: {1}".format(cat, var.name),
+                        # ncol=1,
+                        loc="upper right",
+                        # bbox_to_anchor=(1.04, 1),
+                        # borderaxespad=0,
+                    )
+
+                    plt.tight_layout()
                     pdf.savefig(fig)
                     fig.clear()

@@ -31,7 +31,7 @@ class CoffeaProcessor(ConfigTask):  # AnalysisTask):
     # self.input()["corrections"].items()}
 
     def output(self):
-        out = "array.npy"
+        out = "array_"  # "array.npy"
         if self.processor == "Histogramer":
             out = "hists.coffea"
         return self.local_target(out)
@@ -95,6 +95,8 @@ class CoffeaProcessor(ConfigTask):  # AnalysisTask):
         path = self.output().path
 
         if self.processor == "ArrayExporter":
-            np.save(path, out["arrays"]["hl"])
+            for cat in out["arrays"]:
+                np.save(path + "{}.npy".format(cat), out["arrays"][cat]["hl"])
+
         if self.processor == "Histogramer":
             self.output().dump(out["histograms"])

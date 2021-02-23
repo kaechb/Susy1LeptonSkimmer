@@ -54,7 +54,7 @@ class BaseProcessor(processor.ProcessorABC):
         return self._accumulator
 
     def get_dataset(self, events):
-        return self.config.get_dataset(events.metadata["dataset"])
+        return events.dataset  # self.config.get_dataset(events.metadata["dataset"])
 
     def get_dataset_shift(self, events):
         return events.metadata["dataset"][1]
@@ -176,7 +176,9 @@ class BaseSelection:
 
         zero_b = n_btags == 0
         multi_b = n_btags >= 1
-        selection.add("baseline", ak.to_numpy(baseline_selection))
+        selection.add("baseline_selection", ak.to_numpy(baseline_selection))
+        selection.add("zero_b", zero_b)
+        selection.add("multi_b", multi_b)
 
         common = ["baseline_selection", "lep_selection"]
 
@@ -288,8 +290,8 @@ class ArrayExporter(BaseProcessor, BaseSelection):
     dtype = None
     sep = "_"
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, task):
+        super().__init__(task)
 
         self._accumulator["arrays"] = dict_accumulator()
 
@@ -303,6 +305,7 @@ class ArrayExporter(BaseProcessor, BaseSelection):
     def categories(self, select_output):
         selection = select_output.get("selection")
         categories = select_output.get("categories")
+        # from IPython import embed;embed()
         return (
             {cat: selection.all(*cuts) for cat, cuts in categories.items()}
             if selection and categories
@@ -311,7 +314,7 @@ class ArrayExporter(BaseProcessor, BaseSelection):
 
     def select(self, events):  # , unc, shift):
         out = super().select(events)  # , unc, shift)
-        # dataset = self.get_dataset(events)
+        dataset = self.get_dataset(events)
         # (process,) = dataset.processes.values()
         # xsec_weight = (
         #    1
@@ -323,7 +326,7 @@ class ArrayExporter(BaseProcessor, BaseSelection):
 
     def process(self, events):
         select_output = self.select(events)  # , unc="nominal", shift=None)
-        # categories = self.categories(select_output)
+        categories = self.categories(select_output)
         output = select_output["output"]
 
         # from IPython import embed;embed()
@@ -333,7 +336,15 @@ class ArrayExporter(BaseProcessor, BaseSelection):
             arrays = {key: array.astype(self.dtype) for key, array in arrays.items()}
 
         output["arrays"] = dict_accumulator(
-            {key: array_accumulator(array) for key, array in arrays.items()}
+            {
+                category: dict_accumulator(
+                    {
+                        key: array_accumulator(array[cut, ...])
+                        for key, array in arrays.items()
+                    }
+                )
+                for category, cut in categories.items()
+            }
         )
 
         return output
