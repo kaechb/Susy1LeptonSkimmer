@@ -17,9 +17,8 @@ from coffea.processor.accumulator import (
 )
 
 # register our candidate behaviors
-from coffea.nanoevents.methods import candidate
-
-ak.behavior.update(candidate.behavior)
+# from coffea.nanoevents.methods import candidate
+# ak.behavior.update(candidate.behavior)
 
 
 class BaseProcessor(processor.ProcessorABC):
@@ -128,6 +127,8 @@ class BaseSelection:
 
         # branches = file.get("nominal")
         dataset = events.dataset
+        output["n_events"][dataset] = events.size
+        output["n_events"]["sum_all_events"] = events.size
 
         # event variables
         METPt = events.METPt

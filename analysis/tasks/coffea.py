@@ -5,10 +5,12 @@ import os
 import law
 import law.contrib.coffea
 from luigi import BoolParameter, Parameter
-from coffea.processor import ProcessorABC
+from coffea import processor
+from coffea.nanoevents import TreeMakerSchema, BaseSchema, NanoAODSchema
 import json
 import time
 import numpy as np
+from rich.console import Console
 
 # other modules
 from tasks.basetasks import AnalysisTask, ConfigTask
@@ -75,20 +77,31 @@ class CoffeaProcessor(ConfigTask):  # AnalysisTask):
             # pre_executor=processor.futures_executor,
             # pre_args=dict(workers=32),
             executor=processor.iterative_executor,
-            # executor_args=dict(
-            # nano=True,
-            # savemetrics=1,
-            # xrootdtimeout=30,
-            # align_clusters=True,
-            # processor_compression=None,
-            # **ea,
-            # ),
+            # executor_args=dict(savemetrics=1,
+            # schema=BaseSchema,),
             chunksize=100000,
         )
+        # executor_args=dict(
+        # nano=True,
+        # savemetrics=True,
+        # xrootdtimeout=30,
+        # align_clusters=True,
+        # processor_compression=None,
+        # **ea,
+        # ),
+
+        # show summary
+        console = Console()
+        all_events = out["n_events"]["sum_all_events"]
         toc = time.time()
-        print(np.round(toc - tic, 2), "s")
+        # print(np.round(toc - tic, 2), "s")
 
         # from IPython import embed;embed()
+        total_time = toc - tic
+        console.print("\n[u][bold magenta]Summary metrics:[/bold magenta][/u]")
+        console.print(f"* Total time: {total_time:.2f}s")
+        console.print(f"* Total events: {all_events:e}")
+        console.print(f"* Events / s: {all_events/total_time:.0f}")
 
         # save outputs
         self.output().parent.touch()
