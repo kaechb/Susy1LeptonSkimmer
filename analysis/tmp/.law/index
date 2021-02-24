@@ -1,3 +1,3 @@
 tasks.makefiles:mj.WriteFileset:config fetch-output log-file print-deps print-output print-status remove-output version year
 tasks.coffea:mj.CoffeaProcessor:config debug fetch-output log-file print-deps print-output print-status processor remove-output version year
-tasks.plotting:mj.PlotCoffeaHists:config fetch-output log-file print-deps print-output print-status remove-output version year
+tasks.plotting:mj.PlotCoffeaHists:config fetch-output log-file log-scale print-deps print-output print-status remove-output scale-signal unblinded version year

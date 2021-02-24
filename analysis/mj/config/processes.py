@@ -2,19 +2,6 @@
 Common process definitions.
 """
 
-
-__all__ = [
-    "process_singleTop",
-    "process_VJets",
-    "process_WJets",
-    "process_ZJets",
-    "process_VVJets",
-    "process_WWJets",
-    "process_WZJets",
-    "process_ZZJets",
-]
-
-
 import order as od
 import scinum as sn
 
@@ -26,7 +13,7 @@ import scinum as sn
 process_singleTop = od.Process(
     "ttJets",
     1000,
-    label=r"$t/\bar{t}$ Jets",
+    label=r"$t\Bar{t}$ Jets",
     label_short="ttJ",
     color=(1, 90, 184),
     xsecs={

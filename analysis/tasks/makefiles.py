@@ -25,11 +25,16 @@ class WriteFileset(AnalysisTask):
         out.touch()
 
         # unchanged syntax
-        test_file = "/nfs/dust/cms/user/frengelk/Testing/TTJets_HT_1200to2500_1.root"
+        # test_file = "/nfs/dust/cms/user/frengelk/Testing/TTJets_HT_1200to2500_1.root"
 
-        fileset = {
-            "tt": [test_file],
-        }
+        fileset = {}
+
+        for dat in self.config_inst.datasets:
+            fileset = {
+                dat.name: dat.keys,
+            }
+
+        # from IPython import embed;embed()
 
         with open(self.output().path, "w") as file:
             json.dump(fileset, file)
