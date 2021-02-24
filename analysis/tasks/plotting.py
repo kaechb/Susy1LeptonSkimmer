@@ -13,6 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import mplhep as hep
+from tqdm.auto import tqdm
 
 
 # other modules
@@ -42,10 +43,12 @@ class PlotCoffeaHists(ConfigTask):
         self.output().parent.touch()
         # create pdf object to save figures on separate pages
         with PdfPages(self.output().path) as pdf:
-            # number = len(inp.keys())
+
+            # print dummy hist, because first one is broken
+            # does not work either FIXME
 
             # plot each hist
-            for var in self.config_inst.variables:
+            for var in tqdm(self.config_inst.variables, unit="variable"):
 
                 hists = inp[var.name]
                 categories = [h.name for h in hists.identifiers("category")]
@@ -58,7 +61,7 @@ class PlotCoffeaHists(ConfigTask):
                     # from IPython import embed;embed()
 
                     # ax.set_title("{0}: {1}".format(cat, var.name))
-                    # ax.autoscale(axis="x", tight=True)
+                    ax.autoscale(axis="x", tight=True)
 
                     if self.log_scale:
                         ax.set_yscale("log")
@@ -78,6 +81,7 @@ class PlotCoffeaHists(ConfigTask):
                         ax=ax,
                     )
 
+                    # declare naming
                     leg = ax.legend(
                         title="{0}: {1}".format(cat, var.name),
                         # ncol=1,
@@ -85,7 +89,11 @@ class PlotCoffeaHists(ConfigTask):
                         # bbox_to_anchor=(1.04, 1),
                         # borderaxespad=0,
                     )
+                    ax.set_xlabel(var.get_full_x_title())
+                    ax.set_ylabel(var.get_full_y_title())
 
                     plt.tight_layout()
                     pdf.savefig(fig)
                     fig.clear()
+
+            print("\n", " ---- Created {} pages ----".format(pdf.get_pagecount()), "\n")
