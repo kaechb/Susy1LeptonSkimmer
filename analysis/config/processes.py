@@ -36,7 +36,7 @@ def setup_processes(cfg):
     # build processes
     cfg.add_process(
         "ttJets",
-        1000,
+        100,
         label=r"$t\Bar{t}$ Jets",
         label_short="ttJ",
         color=(1, 90, 184),

@@ -20,8 +20,8 @@ def setup_datasets(cfg, campaign):
     # each needs a name, a Matplotlib x title and a (#bins, start, end) binning
 
     cfg.add_dataset(
-        "tt_jets",
-        200,
+        "ttJets",
+        1100,
         campaign=campaign,
         keys=["/nfs/dust/cms/user/frengelk/Testing/TTJets_HT_1200to2500_1.root"],
     )
