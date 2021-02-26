@@ -36,7 +36,7 @@ class BaseProcessor(processor.ProcessorABC):
         self.category_axis = hist.Cat("category", "Category selection")
         # self.syst_axis = hist.Cat("systematic", "Shift of systematic uncertainty")
         self._accumulator = dict_accumulator(
-            n_events=defaultdict_accumulator(float),
+            n_events=defaultdict_accumulator(int),
             sum_gen_weights=defaultdict_accumulator(float),
             object_cutflow=defaultdict_accumulator(int),
             cutflow=hist.Hist(

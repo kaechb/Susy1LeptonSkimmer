@@ -30,9 +30,11 @@ class WriteFileset(AnalysisTask):
         fileset = {}
 
         for dat in self.config_inst.datasets:
-            fileset = {
-                dat.name: dat.keys,
-            }
+            fileset.update(
+                {
+                    dat.name: dat.keys,
+                }
+            )
 
         # from IPython import embed;embed()
 

@@ -44,3 +44,13 @@ def setup_processes(cfg):
             13: sn.Number(1234.0 / 56, ("rel", 0.07)),
         },
     )
+    cfg.add_process(
+        "ttJets_2",
+        101,
+        label=r"$t\Bar{t}$ Jets",
+        label_short="ttJ",
+        color=(90, 120, 150),
+        xsecs={
+            13: sn.Number(2468.0 / 56, ("rel", 0.07)),
+        },
+    )

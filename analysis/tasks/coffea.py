@@ -45,7 +45,6 @@ class CoffeaProcessor(ConfigTask):  # AnalysisTask):
         return super(CoffeaProcessor, self).store_parts() + parts
 
     def run(self):
-        # from IPython import embed;embed()
         with open(self.input().path, "r") as read_file:
             fileset = json.load(read_file)
 
@@ -68,6 +67,8 @@ class CoffeaProcessor(ConfigTask):  # AnalysisTask):
             processor_inst = Histogramer(self)
 
         tic = time.time()
+
+        # from IPython import embed;embed()
 
         # , metrics
         out = processor.run_uproot_job(

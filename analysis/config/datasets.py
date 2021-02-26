@@ -23,5 +23,17 @@ def setup_datasets(cfg, campaign):
         "ttJets",
         1100,
         campaign=campaign,
-        keys=["/nfs/dust/cms/user/frengelk/Testing/TTJets_HT_1200to2500_1.root"],
+        # keys=["/nfs/dust/cms/user/frengelk/Testing/TTJets_HT_1200to2500_1.root"],
+        keys=[
+            "/nfs/dust/cms/user/frengelk/Testing/TTJets_TuneCP5_RunIISummer19UL16NanoAODv2_1.root"
+        ],
+    )
+
+    cfg.add_dataset(
+        "ttJets_2",
+        1101,
+        campaign=campaign,
+        keys=[
+            "/nfs/dust/cms/user/frengelk/Testing/TTJets_TuneCP5_RunIISummer19UL16NanoAODAPVv2_1.root"
+        ],
     )
