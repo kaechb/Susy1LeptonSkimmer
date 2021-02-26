@@ -68,10 +68,15 @@ class PlotCoffeaHists(ConfigTask):
                         ax.set_ylim(0.0001, 1e6)
 
                     # if more datasets: FIXME
+                    # FIXME axes kinda empty? integrate gets rid of one
+
+                    # for dat in hists.identifiers("dataset"):
+                    # from IPython import embed;embed()
                     coffea.hist.plot1d(
-                        inp[var.name][("tt", cat)].project(var.name),
+                        inp[var.name].integrate("category"),
                         ax=ax,
-                        clear=True,
+                        # clear=True,
+                        overlay="dataset",
                     )
                     hep.set_style("CMS")
                     hep.cms.label(
