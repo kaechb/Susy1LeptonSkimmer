@@ -37,3 +37,240 @@ def setup_datasets(cfg, campaign):
             "/nfs/dust/cms/user/frengelk/Testing/TTJets_TuneCP5_RunIISummer19UL16NanoAODAPVv2_1.root"
         ],
     )
+
+
+################
+
+cfg.add_dataset(
+    "ttJets_sl_fromt",
+    1101,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "ttJets_sl_fromtbar",
+    1102,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "ttJets_dilep",
+    1103,
+),
+cfg.add_dataset(
+    "ttJets_HT600to800",
+    1104,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "ttJets_HT800to1200",
+    1105,
+    campaign=campaign,
+    keys=[],
+),
+
+cfg.add_dataset(
+    "ttJets_HT1200to2500",
+    1106,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "ttJets_HT2500toInf",
+    1107,
+    campaign=campaign,
+    keys=[],
+),
+
+cfg.add_dataset(
+    "QCD_HT100to200",
+    1201,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "QCD_HT200to300",
+    1202,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "QCD_HT300to500",
+    1203,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "QCD_HT500to700",
+    1204,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "QCD_HT700to1000",
+    1205,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "QCD_HT1000to1500",
+    1206,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "QCD_HT1500to2000",
+    1207,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "QCD_HT2000toInf",
+    1208,
+    campaign=campaign,
+    keys=[],
+),
+
+cfg.add_dataset(
+    "WJets_HT70to100",
+    1301,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "WJets_HT100to200",
+    1302,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "WJets_HT200to400",
+    1303,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "WJets_HT400to600",
+    1304,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "WJets_HT600to800",
+    1305,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "WJets_HT800to1200",
+    1306,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "WJets_HT1200to2500",
+    1307,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "WJets_HT2500toInf",
+    1308,
+    campaign=campaign,
+    keys=[],
+),
+
+
+cfg.add_dataset(
+    "DY_HT70to100",
+    1401,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "DY_HT100to200",
+    1402,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "DY_HT200to400",
+    1403,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "DY_HT400to600",
+    1404,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "DY_HT600to800",
+    1405,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "DY_HT800to1200",
+    1406,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "DY_HT1200to2500",
+    1407,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "DY_HT2500toInf",
+    1408,
+    campaign=campaign,
+    keys=[],
+),
+
+
+cfg.add_dataset(
+    "st_tW_top",
+    1501,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "st_tW_antitop",
+    1502,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "st_tW_antitop_no_fh",
+    1503,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "st_tW_top_no_fh",
+    1504,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "st_schannel_4f",
+    505,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "st_tchannel_4f_incl",
+    1506,
+    campaign=campaign,
+    keys=[],
+),
+cfg.add_dataset(
+    "st_tchannel_antitop_4f_incl",
+    1507,
+    campaign=campaign,
+    keys=[],
+)
