@@ -3,7 +3,7 @@
 TODO: Structure
 
 Creation of the needed conda environment from .yml file (points to my directory, a lot of packages)
-(Currently solved using setup.sh, but can be customized)
+(Currently not neccessary when using setup.sh, but can be customized)
 ```shell
 conda environment: conda env create -f law_env.yml
 conda activate law_env
