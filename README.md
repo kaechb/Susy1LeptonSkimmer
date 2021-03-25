@@ -35,8 +35,13 @@ law run mj.WriteFileset --local-scheduler --version dev1
 Histogram the files and save as coffea.hists
 This includes a Hstogram for every category-variable-dataset combination.
 ```shell
-law run mj.CoffeaProcessor --version dev1 --local-scheduler --processor Histogramer
+law run mj.CoffeaProcessor --version dev1 --local-scheduler (--processor Histogramer|ArrayExporter)
 ```
+Debug the selection and processor
+```shell
+law run mj.CoffeaProcessor --version test1 --local-scheduler --processor Histogramer --debug --workflow local
+```
+
 
 Plotting of hists into a pdf, log scale allows for y-axis change
 Groups subprocesses into parents, seperate plots for category-variables
