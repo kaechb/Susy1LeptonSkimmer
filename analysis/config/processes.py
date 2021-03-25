@@ -36,20 +36,20 @@ def setup_processes(cfg):
     # build processes
     """
     cfg.add_process(
-        "ttJets",
+        "TTJets",
         100,
         label=r"$t\Bar{t}$ Jets",
-        label_short="ttJ",
+        label_short="TTJ",
         color=(1, 90, 184),
         xsecs={
             13: sn.Number(1234.0 / 56, ("rel", 0.07)),
         },
     )
     cfg.add_process(
-        "ttJets_2",
+        "TTJets_2",
         101,
         label=r"$t\Bar{t}$ Jets",
-        label_short="ttJ",
+        label_short="TTJ",
         color=(90, 120, 150),
         xsecs={
             13: sn.Number(2468.0 / 56, ("rel", 0.07)),
@@ -60,64 +60,64 @@ def setup_processes(cfg):
     ############
 
     cfg.add_process(
-        "ttJets",
+        "TTJets",
         100,
-        label=r"tt+Jets",
-        label_short="ttJ",
+        label=r"TT+Jets",
+        label_short="TTJ",
         color=(50, 100, 150),
         processes=[
             od.Process(
-                "ttJets_sl_fromt",
+                "TTJets_sl_fromt",
                 101,
-                label=r"ttJets sl t",
+                label=r"TTJets sl t",
                 xsecs={
                     13: sn.Number(182.18),
                 },
             ),
             od.Process(
-                "ttJets_sl_fromtbar",
+                "TTJets_sl_fromtbar",
                 102,
-                label=r"ttJets sl tbar",
+                label=r"TTJets sl tbar",
                 xsecs={
                     13: sn.Number(182.18),
                 },
             ),
             od.Process(
-                "ttJets_dilep",
+                "TTJets_dilep",
                 103,
-                label=r"ttJets dl",
+                label=r"TTJets dl",
                 xsecs={
                     13: sn.Number(87.315),
                 },
             ),
             od.Process(
-                "ttJets_HT600to800",
+                "TTJets_HT600to800",
                 104,
-                label=r"ttJets HT 600-800",
+                label=r"TTJets HT 600-800",
                 xsecs={
                     13: sn.Number(2.76),
                 },
             ),
             od.Process(
-                "ttJets_HT800to1200",
+                "TTJets_HT800to1200",
                 105,
-                label=r"ttJets HT 800-1200",
+                label=r"TTJets HT 800-1200",
                 xsecs={
                     13: sn.Number(1.116),
                 },
             ),
             od.Process(
-                "ttJets_HT1200to2500",
+                "TTJets_HT1200to2500",
                 106,
-                label=r"ttJets HT 1200-2500",
+                label=r"TTJets HT 1200-2500",
                 xsecs={
                     13: sn.Number(0.198),
                 },
             ),
             od.Process(
-                "ttJets_HT2500toInf",
+                "TTJets_HT2500toInf",
                 107,
-                label=r"ttJets HT 2500-Inf",
+                label=r"TTJets HT 2500-Inf",
                 xsecs={
                     13: sn.Number(0.002),
                 },
@@ -397,8 +397,115 @@ def setup_processes(cfg):
         ],
     )
 
+    cfg.add_process(
+        "rare",
+        600,
+        label=r"Rare Processes",
+        label_short="rare",
+        color=(150, 150, 150),
+        processes=[
+            od.Process(
+                "TTZ_llnunu",
+                601,
+                label=r"TTZ ll nu nu",
+                xsecs={
+                    13: sn.Number(0.253),
+                },
+            ),
+            od.Process(
+                "TTZ_qq",
+                602,
+                label=r"TTZ qq",
+                xsecs={
+                    13: sn.Number(0.530),
+                },
+            ),
+            od.Process(
+                "TTWjets_lnu",
+                603,
+                label=r"TTW+jets l nu",
+                xsecs={
+                    13: sn.Number(0.204),
+                },
+            ),
+            od.Process(
+                "TTWjets_qq",
+                604,
+                label=r"TTW+jets qq",
+                xsecs={
+                    13: sn.Number(0.406),
+                },
+            ),
+            od.Process(
+                "WW_llnunu",
+                605,
+                label=r"WW ll nu nu",
+                xsecs={13: sn.Number(12.178)},
+            ),
+            od.Process(
+                "WW_lnuqq",
+                606,
+                label=r"WW l nu qq",
+                xsecs={
+                    13: sn.Number(49.997),
+                },
+            ),
+            od.Process(
+                "WZ_lnuqq",
+                607,
+                label=r"WZ l nu qq",
+                xsecs={13: sn.Number(10.71)},
+            ),
+            od.Process(
+                "WZ_lnununu",
+                608,
+                label=r"WZ l nununu",
+                xsecs={
+                    13: sn.Number(3.033),
+                },
+            ),
+            od.Process(
+                "WZ_llqq",
+                609,
+                label=r"WZ ll qq",
+                xsecs={
+                    13: sn.Number(5.595),
+                },
+            ),
+            od.Process(
+                "ZZ_qqnunu",
+                610,
+                label=r"ZZ qq nunu",
+                xsecs={
+                    13: sn.Number(4.033),
+                },
+            ),
+            od.Process(
+                "ZZ_llnunu",
+                611,
+                label=r"ZZ ll nunu",
+                xsecs={
+                    13: sn.Number(0.564),
+                },
+            ),
+            od.Process(
+                "ZZ_ll_qq",
+                612,
+                label=r"ZZ ll qq",
+                xsecs={13: sn.Number(3.22)},
+            ),
+            od.Process(
+                "tZq_ll4f",
+                613,
+                label=r"tZq ll 4f",
+                xsecs={
+                    13: sn.Number(0.0758),
+                },
+            ),
+        ],
+    )
 
-"""
+    """
 
 
         cfg.add_process(
