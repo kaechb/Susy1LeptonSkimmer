@@ -11,10 +11,9 @@ import luigi
 import law
 import order as od
 import importlib
+import math
 
-law.contrib.load(
-    "numpy", "tasks", "root", "slack", "telegram", "wlcg", "htcondor", "hdf5", "coffea"
-)
+law.contrib.load("numpy", "tasks", "root", "htcondor", "hdf5", "coffea")  # "wlcg",
 
 
 class BaseTask(law.Task):
@@ -150,30 +149,30 @@ class ShiftTask(ConfigTask):
         return super(ShiftTask, self).store_parts + (self.effective_shift,)
 
 
-class DatasetTask(ShiftTask):
+class DatasetTask(ConfigTask):  # ShiftTask
 
     dataset = luigi.Parameter(
-        default="singleTop", description="the dataset name, default: " "singleTop"
+        default="TTJets_sl_fromt", description="the dataset name, default: "
     )
 
-    @classmethod
-    def modify_param_values(cls, params):
-        if params["shift"] == "nominal":
-            return params
+    # @classmethod
+    # def modify_param_values(cls, params):
+    # if params["shift"] == "nominal":
+    # return params
 
-        # shift known to config?
-        config_inst = od.Config.get_instance(cls.config)
-        if params["shift"] not in config_inst.shifts:
-            raise Exception(
-                "shift {} unknown to config {}".format(params["shift"], config_inst)
-            )
+    # # shift known to config?
+    # config_inst = od.Config.get_instance(cls.config)
+    # # if params["shift"] not in config_inst.shifts:
+    # # raise Exception(
+    # # "shift {} unknown to config {}".format(params["shift"], config_inst)
+    # # )
 
-        # check if the shift is known to the task or dataset
-        dataset_inst = od.Dataset.get_instance(params["dataset"])
-        if params["shift"] in cls.shifts or params["shift"] in dataset_inst.info:
-            params["effective_shift"] = params["shift"]
+    # # # check if the shift is known to the task or dataset
+    # # dataset_inst = od.Dataset.get_instance(params["dataset"])
+    # # if params["shift"] in cls.shifts or params["shift"] in dataset_inst.info:
+    # # params["effective_shift"] = params["shift"]
 
-        return params
+    # return params
 
     def __init__(self, *args, **kwargs):
         super(DatasetTask, self).__init__(*args, **kwargs)
@@ -181,11 +180,11 @@ class DatasetTask(ShiftTask):
         # store the dataset instance and the dataset info instance that
         # corresponds to the shift
         self.dataset_inst = self.config_inst.get_dataset(self.dataset)
-        self.dataset_info_inst = self.dataset_inst.get_info(
-            self.shift_inst.name
-            if self.shift_inst.name in self.dataset_inst.info
-            else "nominal"
-        )
+        # self.dataset_info_inst = self.dataset_inst.get_info(
+        # self.shift_inst.name
+        # if self.shift_inst.name in self.dataset_inst.info
+        # else "nominal"
+        # )
 
         # also, when there is only one linked process in the current dataset,
         # store it
@@ -194,13 +193,88 @@ class DatasetTask(ShiftTask):
         else:
             self.process_inst = None
 
-    @property
-    def store_parts(self):
-        parts = super(DatasetTask, self).store_parts
-        # insert the dataset name right before the shift
-        parts = parts[:-1] + (self.dataset, parts[-1])
-        return parts
+    # @property
+    # def store_parts(self):
+    # parts = super(DatasetTask, self).store_parts
+    # # insert the dataset name right before the shift
+    #
+    # parts = parts[:-1] + (self.dataset, parts[-1])
+    # return parts
+
+
+# Syntax setting of condor output
+# class HTCondorJobManagerRWTH(law.htcondor.HTCondorJobManager):
+## @classmethod
+# def map_status(cls, status_flag):
+# # map status hold ("5", "H") and suspended ("7") to
+# # cls.PENDING to avoid resubmission
+# if status_flag in ("0", "1", "5", "7", "U", "I", "H"):
+# return cls.PENDING
+# elif status_flag in ("2", "R"):
+# return cls.RUNNING
+# elif status_flag in ("4", "C"):
+# return cls.FINISHED
+# elif status_flag in ("6", "E"):
+# return cls.FAILED
+# else:
+# return cls.FAILED
+
+
+class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
+    """
+    Batch systems are typically very heterogeneous by design, and so is HTCondor. Law does not aim
+    to "magically" adapt to all possible HTCondor setups which would certainly end in a mess.
+    Therefore we have to configure the base HTCondor workflow in law.contrib.htcondor to work with
+    the CERN HTCondor environment. In most cases, like in this example, only a minimal amount of
+    configuration is required.
+    """
 
     def create_branch_map(self):
         # trivial branch map: one branch per file
-        return {i: i for i in range(self.dataset_info_inst.n_files)}
+        # from IPython import embed;embed()
+        n = self.config_inst.datasets.len()
+        return list(range(n * 3))
+
+        # return {i: i for i in range(n)}
+
+    def htcondor_post_submit_delay(self):
+        return self.poll_interval * 60
+
+    def htcondor_output_directory(self):
+        # the directory where submission meta data should be stored
+        return law.LocalDirectoryTarget(self.local_path())
+
+    def htcondor_bootstrap_file(self):
+        # each job can define a bootstrap file that is executed prior to the actual job
+        # in order to setup software and environment variables
+        return law.util.rel_path("$ANALYSIS_BASE", "htcondor_bootstrap.sh")
+
+    def htcondor_job_config(self, config, job_num, branches):
+        # render_variables are rendered into all files sent with a job
+        config.render_variables["analysis_base"] = os.getenv("ANALYSIS_BASE")
+        # copy the entire environment
+        config.custom_content.append(("getenv", "True"))
+        # config.custom_content.append(("SCHEDD_NAME", "bird-htc-sched14.desy.de"))
+        config.custom_content.append(("universe", "vanilla"))
+        # require more RAM on CPU
+        # config.custom_content.append(("request_cpus", "1"))
+        config.custom_content.append(("request_memory", "25000"))
+        config.custom_content.append(("+RequestRuntime = 86400"))
+        # config.custom_content.append(("Request_GPUs", "0"))
+        # config.custom_content.append(("Request_GpuMemory", "0"))
+
+        # condor logs
+        # if self.htcondor_logs:
+        config.stdout = "out.txt"
+        config.stderr = "err.txt"
+        config.log = "log.txt"
+        # from IPython import embed;embed()
+        return config
+
+    def htcondor_use_local_scheduler(self):
+        return True
+
+    # def htcondor_create_job_manager(self, **kwargs):
+    # kwargs = law.util.merge_dicts(
+    # self.htcondor_job_manager_defaults, kwargs)
+    # return HTCondorJobManagerRWTH(**kwargs)

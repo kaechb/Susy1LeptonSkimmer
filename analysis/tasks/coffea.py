@@ -13,14 +13,23 @@ import numpy as np
 from rich.console import Console
 
 # other modules
-from tasks.basetasks import AnalysisTask, ConfigTask
+from tasks.basetasks import DatasetTask, HTCondorWorkflow
 from utils.CoffeaBase import *
 from tasks.makefiles import WriteFileset
 
 
-class CoffeaProcessor(ConfigTask):  # AnalysisTask):
+class CoffeaProcessor(
+    DatasetTask, HTCondorWorkflow, law.LocalWorkflow
+):  # AnalysisTask):
     processor = Parameter(default="ArrayExporter")
     debug = BoolParameter()
+    debug_dataset = "TTJets_sl_fromt"
+
+    """
+    this is a HTCOndor workflow, normally it will get submitted with configurations defined
+    in the htcondor_bottstrap.sh or the basetasks.HTCondorWorkflow
+    If you want to run this locally, just use --workflow local in the terminal
+    """
 
     def __init__(self, *args, **kwargs):
         super(CoffeaProcessor, self).__init__(*args, **kwargs)
@@ -41,7 +50,7 @@ class CoffeaProcessor(ConfigTask):  # AnalysisTask):
     def store_parts(self):
         parts = (self.analysis_choice, self.processor)
         if self.debug:
-            parts += ("debug", self.Processor.debug_dataset)
+            parts += ("debug", self.debug_dataset)
         return super(CoffeaProcessor, self).store_parts() + parts
 
     def run(self):
@@ -68,7 +77,9 @@ class CoffeaProcessor(ConfigTask):  # AnalysisTask):
 
         tic = time.time()
 
-        # from IPython import embed;embed()
+        if self.debug:
+            # from IPython import embed;embed()
+            fileset = {self.debug_dataset: [fileset[self.debug_dataset][0]]}
 
         # , metrics
         out = processor.run_uproot_job(
