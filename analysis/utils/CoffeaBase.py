@@ -22,7 +22,7 @@ from coffea.processor.accumulator import (
 
 
 class BaseProcessor(processor.ProcessorABC):
-    # individal_weights = False
+    individal_weights = False
     # jes_shifts = False
     # dataset_shifts = False
 
@@ -122,6 +122,7 @@ class BaseSelection:
         # set up stuff to fill
         output = self.accumulator.identity()
         selection = processor.PackedSelection()
+        weights = processor.Weights(events.size, storeIndividual=self.individal_weights)
 
         # from IPython import embed;embed()
 
@@ -129,6 +130,10 @@ class BaseSelection:
         dataset = events.dataset
         output["n_events"][dataset] = events.size
         output["n_events"]["sum_all_events"] = events.size
+
+        # access instances
+        data = dat = self.config.get_dataset(dataset)
+        process = self.config.get_process(dataset)
 
         # event variables
         METPt = events.METPt
@@ -180,6 +185,20 @@ class BaseSelection:
         selection.add("baseline_selection", ak.to_numpy(baseline_selection))
         selection.add("zero_b", zero_b)
         selection.add("multi_b", multi_b)
+
+        # add trigger selections
+        selection.add("HLTElectronOr", events.HLTElectronOr)
+        selection.add("HLTLeptonOr", events.HLTLeptonOr)
+        selection.add("HLTMETOr", events.HLTMETOr)
+        selection.add("HLTMuonOr", events.HLTMuonOr)
+
+        # apply some weights,  MC/data check beforehand
+        if not data.is_data:
+            weights.add("x_sec", process.xsecs[13.0].nominal)
+
+        from IPython import embed
+
+        embed()
 
         common = ["baseline_selection", "lep_selection"]
 
@@ -257,9 +276,11 @@ class Histogramer(BaseProcessor, BaseSelection):
     def process(self, events):
         output = self.accumulator.identity()
         out = self.select(events)
+        weights = out["weights"]
 
         for var_name in self.variables().names():
             for cat in out["categories"].keys():
+                weight = weights.weight()
                 # value = out[var_name]
                 # generate mask for variable values
                 mask = np.ones(len(out[var_name]), dtype=bool)
@@ -274,7 +295,7 @@ class Histogramer(BaseProcessor, BaseSelection):
                 values["category"] = cat
                 values[var_name] = out[var_name][mask]
                 # weight = weights.weight()[cut]
-                # values["weight"] = weight
+                values["weight"] = weight[mask]
                 output["histograms"][var_name].fill(**values)
 
         # output["n_events"] = len(METPt)
@@ -328,6 +349,7 @@ class ArrayExporter(BaseProcessor, BaseSelection):
     def process(self, events):
         select_output = self.select(events)  # , unc="nominal", shift=None)
         categories = self.categories(select_output)
+        weights = select_output["weights"]
         output = select_output["output"]
 
         # from IPython import embed;embed()
