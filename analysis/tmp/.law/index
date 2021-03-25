@@ -1,3 +1,7 @@
-tasks.makefiles:mj.WriteFileset:config fetch-output log-file print-deps print-output print-status remove-output version year
-tasks.coffea:mj.CoffeaProcessor:config debug fetch-output log-file print-deps print-output print-status processor remove-output version year
+tasks.coffea:mj.CoffeaProcessor:acceptance branch branches cancel-jobs cleanup-jobs config dataset debug end-branch fetch-output htcondor-pool htcondor-scheduler ignore-submission log-file no-poll parallel-jobs pilot poll-fails poll-interval print-deps print-output print-status processor remove-output retries shuffle-jobs start-branch tasks-per-job threads tolerance transfer-logs version walltime workflow year
+tasks.testing:mj.TestDummy:acceptance branch branches cancel-jobs cleanup-jobs config dataset end-branch fetch-output htcondor-pool htcondor-scheduler ignore-submission log-file no-poll parallel-jobs pilot poll-fails poll-interval print-deps print-output print-status remove-output retries shuffle-jobs start-branch tasks-per-job threads tolerance transfer-logs version walltime workflow year
+tasks.makefiles:mj.WriteDatasets:config directory-path fetch-output log-file print-deps print-output print-status remove-output version year
+tasks.makefiles:mj.WriteConfigData:config fetch-output log-file print-deps print-output print-status remove-output version year
+tasks.makefiles:mj.WriteFileset:config directory-path fetch-output log-file print-deps print-output print-status remove-output version year
 tasks.plotting:mj.PlotCoffeaHists:config fetch-output log-file log-scale print-deps print-output print-status remove-output scale-signal unblinded version year
+tasks.plotting:mj.ArrayPlotting:config fetch-output log-file print-deps print-output print-status remove-output version year

@@ -196,9 +196,9 @@ class BaseSelection:
         if not data.is_data:
             weights.add("x_sec", process.xsecs[13.0].nominal)
 
-        from IPython import embed
+        # from IPython import embed
 
-        embed()
+        # embed()
 
         common = ["baseline_selection", "lep_selection"]
 
@@ -360,7 +360,9 @@ class ArrayExporter(BaseProcessor, BaseSelection):
 
         output["arrays"] = dict_accumulator(
             {
-                category: dict_accumulator(
+                category
+                + "_"
+                + select_output["dataset"]: dict_accumulator(
                     {
                         key: array_accumulator(array[cut, ...])
                         for key, array in arrays.items()

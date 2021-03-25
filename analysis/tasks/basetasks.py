@@ -233,7 +233,11 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # trivial branch map: one branch per file
         # from IPython import embed;embed()
         n = self.config_inst.datasets.len()
-        return list(range(n * 3))
+        # dividde workload
+        n = n * 3
+        if self.debug:
+            n = 1
+        return list(range(n))
 
         # return {i: i for i in range(n)}
 

@@ -22,13 +22,13 @@ class CoffeaProcessor(
     DatasetTask, HTCondorWorkflow, law.LocalWorkflow
 ):  # AnalysisTask):
     processor = Parameter(default="ArrayExporter")
-    debug = BoolParameter()
-    debug_dataset = "TTJets_sl_fromt"
+    debug = BoolParameter(default=False)
+    debug_dataset = "TTZ_qq"  # take a small set to reduce computing time
 
     """
     this is a HTCOndor workflow, normally it will get submitted with configurations defined
     in the htcondor_bottstrap.sh or the basetasks.HTCondorWorkflow
-    If you want to run this locally, just use --workflow local in the terminal
+    If you want to run this locally, just use --workflow local in the command line
     """
 
     def __init__(self, *args, **kwargs):
@@ -42,10 +42,18 @@ class CoffeaProcessor(
     # self.input()["corrections"].items()}
 
     def output(self):
-        out = "array_"  # "array.npy"
+        datasets = self.config_inst.datasets.names()
+        if self.debug:
+            datasets = [self.debug_dataset]
+        out = {
+            cat + "_" + dat: self.local_target(cat + "_" + dat + ".npy")
+            for dat in datasets
+            for cat in ["N0b", "N1b"]
+        }
+        # from IPython import embed;embed()
         if self.processor == "Histogramer":
-            out = "hists.coffea"
-        return self.local_target(out)
+            out = self.local_target("hists.coffea")
+        return out
 
     def store_parts(self):
         parts = (self.analysis_choice, self.processor)
@@ -116,12 +124,16 @@ class CoffeaProcessor(
         console.print(f"* Events / s: {all_events/total_time:.0f}")
 
         # save outputs
-        self.output().parent.touch()
-        path = self.output().path
+        # seperated for processor, both need different touch calls
 
         if self.processor == "ArrayExporter":
+            self.output().popitem()[1].parent.touch()
             for cat in out["arrays"]:
-                np.save(path + "{}.npy".format(cat), out["arrays"][cat]["hl"])
+                # from IPython import embed;embed()
+                self.output()[cat].dump(out["arrays"][cat]["hl"].value)
+            # hacky way of defining if task is done FIXME
+            # self.output().dump(np.array([1]))
 
         if self.processor == "Histogramer":
+            self.output().parent.touch()
             self.output().dump(out["histograms"])

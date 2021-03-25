@@ -133,3 +133,21 @@ class PlotCoffeaHists(ConfigTask):
                     fig.clear()
 
             print("\n", " ---- Created {} pages ----".format(pdf.get_pagecount()), "\n")
+
+
+class ArrayPlotting(ConfigTask):
+    def requires(self):
+        return CoffeaProcessor.req(
+            self, processor="ArrayExporter", debug=True, workflow="local"
+        )  # , workflow="local", branch=-1)
+
+    def output(self):
+        return self.local_target("hists")
+
+    def run(self):
+        from IPython import embed
+
+        embed()
+        # inp = self.input()["collection"][0].load()
+        array = self.input()["collection"].targets[0]["N0b_TTZ_qq"].load()
+        # path=self.input()["collection"].targets[0].path
