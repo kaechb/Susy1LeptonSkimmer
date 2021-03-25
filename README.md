@@ -20,7 +20,9 @@ Setup law indexing, autocompletion and task recognition
 ```shell
 law setup: 
 source analysis/setup.sh
+law index 
 ```
+law index collect all tasks, needed for new tasks
 
 # Current analysis tasks
 
