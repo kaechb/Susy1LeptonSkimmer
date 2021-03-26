@@ -68,8 +68,8 @@ class PlotCoffeaHists(ConfigTask):
                     ax.autoscale(axis="x", tight=True)
 
                     for proc in self.config_inst.processes:
-                        #from IPython import embed;embed()
-                        #if "QCD" in proc.name:
+                        # from IPython import embed;embed()
+                        # if "QCD" in proc.name:
 
                         # for each process, map childs together to plot in one, get rid of cat axis
                         child_hists = hists[
@@ -98,7 +98,7 @@ class PlotCoffeaHists(ConfigTask):
                         # FIXME axes kinda empty? integrate gets rid of one
 
                         # for dat in hists.identifiers("dataset"):
-                    #from IPython import embed;embed()
+                    # from IPython import embed;embed()
                     bg = bg_hists[0]
                     for i in range(1, len(bg_hists)):
                         bg.add(bg_hists[i])
@@ -106,10 +106,11 @@ class PlotCoffeaHists(ConfigTask):
                     coffea.hist.plot1d(
                         # inp[var.name].integrate("category"),
                         bg,
-                        ax=ax,stack=True,
+                        ax=ax,
+                        stack=True,
                         overflow="none",
                         fill_opts=dict(color=[col for col in hists_attr]),
-                        #fill_opts=hists_attr,   #dict(color=proc.color),
+                        # fill_opts=hists_attr,   #dict(color=proc.color),
                         # legend_opts=dict(proc.label)
                         clear=False,
                         # overlay="dataset",

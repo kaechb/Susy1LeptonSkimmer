@@ -52,27 +52,26 @@ def setup_variables(cfg):
         x_title=r"m_{Jet}^{1}",
     )
 
-
     cfg.add_variable(
         name="n_jets",
         expression="n_jets",
-        binning=(20,0 ,20 ),
-        #unit="",
+        binning=(20, 0, 20),
+        # unit="",
         x_title=r"Number of Jets",
     )
 
     cfg.add_variable(
         name="Dphi",
         expression="Dphi",
-        binning=(64,-3.2 ,3.2 ),
-        #unit="",
+        binning=(64, -3.2, 3.2),
+        # unit="",
         x_title=r"\Delta \Phi",
     )
 
     cfg.add_variable(
         name="lead_lep_pt",
         expression="lead_lep_pt",
-        binning=(100,0 ,1000 ),
+        binning=(100, 0, 1000),
         unit="",
         x_title=r"",
     )

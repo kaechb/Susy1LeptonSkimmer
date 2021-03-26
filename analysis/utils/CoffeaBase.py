@@ -113,7 +113,10 @@ class BaseSelection:
         return dict(
             # lep=self.obj_arrays(X["good_leptons"], 1, ("pdgId", "charge")),
             # jet=self.obj_arrays(X["good_jets"], 4, ("btagDeepFlavB",)),
-            hl=np.stack([X[var].astype(np.float32) for var in self.config.variables.names()], axis=-1),
+            hl=np.stack(
+                [X[var].astype(np.float32) for var in self.config.variables.names()],
+                axis=-1,
+            ),
             # meta=X["event"].astype(np.int64),
         )
 
@@ -193,38 +196,42 @@ class BaseSelection:
         selection.add("HLTMETOr", events.HLTMETOr)
         selection.add("HLTMuonOr", events.HLTMuonOr)
 
-
-        #from IPython import embed;embed()
+        # from IPython import embed;embed()
 
         # apply some weights,  MC/data check beforehand
         if not data.is_data:
             weights.add("x_sec", process.xsecs[13.0].nominal)
 
-            #from IPython import embed;embed()
+            # from IPython import embed;embed()
 
             # some weights have more than weight, not always consistent
             # take only first weight, since everything with more than 1 lep gets ejected
 
-            weights.add("LeptonSFTrigger", events.LeptonSFTrigger[:, 0],
-                weightUp =  events.LeptonSFTriggerUp[:, 0],
+            weights.add(
+                "LeptonSFTrigger",
+                events.LeptonSFTrigger[:, 0],
+                weightUp=events.LeptonSFTriggerUp[:, 0],
                 weightDown=events.LeptonSFTriggerDown[:, 0],
             )
 
-            weights.add("LeptonSFIsolation",events.LeptonSFIsolation[:, 0] ,
-                weightDown= events.LeptonSFIsolationDown[:, 0],
-                weightUp = events.LeptonSFIsolationUp[:, 0],
+            weights.add(
+                "LeptonSFIsolation",
+                events.LeptonSFIsolation[:, 0],
+                weightDown=events.LeptonSFIsolationDown[:, 0],
+                weightUp=events.LeptonSFIsolationUp[:, 0],
             )
 
-            weights.add("LeptonSFMVA",events.LeptonSFMVA[:, 0] ,
-                weightDown= events.LeptonSFMVADown[:, 0],
-                weightUp = events.LeptonSFMVAUp[:, 0],
+            weights.add(
+                "LeptonSFMVA",
+                events.LeptonSFMVA[:, 0],
+                weightDown=events.LeptonSFMVADown[:, 0],
+                weightUp=events.LeptonSFMVAUp[:, 0],
             )
 
             # weights.add("JetMediumCSVBTagSF", events.JetMediumCSVBTagSF,
-                # weightUp = events.JetMediumCSVBTagSFUp,
-                # weightDown= events.JetMediumCSVBTagSFDown,
+            # weightUp = events.JetMediumCSVBTagSFUp,
+            # weightDown= events.JetMediumCSVBTagSFDown,
             # )
-
 
         # from IPython import embed
 
