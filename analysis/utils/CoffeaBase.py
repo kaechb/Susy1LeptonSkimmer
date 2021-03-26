@@ -113,7 +113,7 @@ class BaseSelection:
         return dict(
             # lep=self.obj_arrays(X["good_leptons"], 1, ("pdgId", "charge")),
             # jet=self.obj_arrays(X["good_jets"], 4, ("btagDeepFlavB",)),
-            hl=np.stack([X[var].astype(np.float32) for var in self.hl], axis=-1),
+            hl=np.stack([X[var].astype(np.float32) for var in self.config.variables.names()], axis=-1),
             # meta=X["event"].astype(np.int64),
         )
 
@@ -136,12 +136,13 @@ class BaseSelection:
         process = self.config.get_process(dataset)
 
         # event variables
+        # look at all possibilities with events.columns
         METPt = events.METPt
         W_mt = events.WBosonMt
 
         # leptons variables
         n_leptons = events.nLepton
-        lep_pt = events.LeptonPt[:, 0]
+        lead_lep_pt = events.LeptonPt[:, 0]
         tight_lep = events.LeptonTightId[:, 0]
 
         leptons = ak.zip(
@@ -156,7 +157,7 @@ class BaseSelection:
         )
 
         # lep selection
-        lep_selection = (n_leptons == 1) & (tight_lep) & (lep_pt > 10)
+        lep_selection = (n_leptons == 1) & (tight_lep) & (lead_lep_pt > 10)
 
         selection.add("lep_selection", ak.to_numpy(lep_selection))
 
@@ -171,7 +172,7 @@ class BaseSelection:
         sorted_jets = ak.sort(events.JetPt, ascending=False)
 
         baseline_selection = (
-            (lep_pt > 25)
+            (lead_lep_pt > 25)
             # &veto lepton > 10
             # &No isolated track with p T ≥ 10 GeV and M T2 < 60 GeV (80 GeV) for hadronic (leptonic)
             & (sorted_jets[:, 0] > 80)
@@ -192,9 +193,38 @@ class BaseSelection:
         selection.add("HLTMETOr", events.HLTMETOr)
         selection.add("HLTMuonOr", events.HLTMuonOr)
 
+
+        #from IPython import embed;embed()
+
         # apply some weights,  MC/data check beforehand
         if not data.is_data:
             weights.add("x_sec", process.xsecs[13.0].nominal)
+
+            #from IPython import embed;embed()
+
+            # some weights have more than weight, not always consistent
+            # take only first weight, since everything with more than 1 lep gets ejected
+
+            weights.add("LeptonSFTrigger", events.LeptonSFTrigger[:, 0],
+                weightUp =  events.LeptonSFTriggerUp[:, 0],
+                weightDown=events.LeptonSFTriggerDown[:, 0],
+            )
+
+            weights.add("LeptonSFIsolation",events.LeptonSFIsolation[:, 0] ,
+                weightDown= events.LeptonSFIsolationDown[:, 0],
+                weightUp = events.LeptonSFIsolationUp[:, 0],
+            )
+
+            weights.add("LeptonSFMVA",events.LeptonSFMVA[:, 0] ,
+                weightDown= events.LeptonSFMVADown[:, 0],
+                weightUp = events.LeptonSFMVAUp[:, 0],
+            )
+
+            # weights.add("JetMediumCSVBTagSF", events.JetMediumCSVBTagSF,
+                # weightUp = events.JetMediumCSVBTagSFUp,
+                # weightDown= events.JetMediumCSVBTagSFDown,
+            # )
+
 
         # from IPython import embed
 
