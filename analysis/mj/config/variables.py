@@ -33,7 +33,7 @@ def setup_variables(cfg):
         expression="LT",
         binning=(50, 0.0, 1000),
         unit="GeV",
-        x_title=r"LT",
+        x_title="LT",
     )
 
     cfg.add_variable(
@@ -41,15 +41,7 @@ def setup_variables(cfg):
         expression="HT",
         binning=(50, 0.0, 1000.0),
         unit="GeV",
-        x_title=r"HT",
-    )
-
-    cfg.add_variable(
-        name="jet_mass_1",
-        expression="jet_mass_1",
-        binning=(50, 0.0, 1000.0),
-        unit="GeV",
-        x_title=r"m_{Jet}^{1}",
+        x_title="HT",
     )
 
     cfg.add_variable(
@@ -57,21 +49,30 @@ def setup_variables(cfg):
         expression="n_jets",
         binning=(20, 0, 20),
         # unit="",
-        x_title=r"Number of Jets",
-    )
-
-    cfg.add_variable(
-        name="Dphi",
-        expression="Dphi",
-        binning=(64, -3.2, 3.2),
-        # unit="",
-        x_title=r"\Delta \Phi",
+        x_title="Number of Jets",
     )
 
     cfg.add_variable(
         name="lead_lep_pt",
         expression="lead_lep_pt",
         binning=(100, 0, 1000),
-        unit="",
-        x_title=r"",
+        #unit="",
+        x_title=r"$p_{T}^{lep1}$",
     )
+
+    cfg.add_variable(
+        name="jet_mass_1",
+        expression="jet_mass_1",
+        binning=(50, 0.0, 1000.0),
+        unit="GeV",
+        x_title=r"$m_{Jet}^{1}$",
+    )
+
+    cfg.add_variable(
+        name="Dphi",
+        expression="Dphi",
+        binning=(64, -3.2, 3.2),
+        #unit="",
+        x_title=r"$ \Delta \Phi $",
+    )
+

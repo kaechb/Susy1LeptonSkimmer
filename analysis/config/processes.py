@@ -64,7 +64,7 @@ def setup_processes(cfg):
         100,
         label=r"TT+Jets",
         label_short="TTJ",
-        color=(50, 100, 150),
+        color=(0, 0, 255),
         processes=[
             od.Process(
                 "TTJets_sl_fromt",
@@ -130,7 +130,7 @@ def setup_processes(cfg):
         200,
         label=r"QCD Multijet",
         label_short="QCD",
-        color=(150, 100, 50),
+        color=(139, 28, 98),
         processes=[
             od.Process(
                 "QCD_HT100to200",
@@ -198,9 +198,9 @@ def setup_processes(cfg):
     cfg.add_process(
         "WJets",
         300,
-        label=r"W+Jets \rightarrow l \nu ",
+        label=r"$W+Jets \rightarrow l \nu$",
         label_short="W+JEts",
-        color=(200, 200, 200),
+        color=(255, 165 , 0),
         processes=[
             od.Process(
                 "WJets_HT70to100",
@@ -268,7 +268,7 @@ def setup_processes(cfg):
     cfg.add_process(
         "DY",
         400,
-        label=r"DY \rightarrow l l ",
+        label=r"$DY \rightarrow l l$",
         label_short="DY",
         color=(100, 100, 100),
         processes=[
@@ -340,7 +340,7 @@ def setup_processes(cfg):
         500,
         label=r"Single t SM",
         label_short="st",
-        color=(150, 150, 150),
+        color=(255, 0, 0),
         processes=[
             od.Process(
                 "st_tW_top",
@@ -402,7 +402,7 @@ def setup_processes(cfg):
         600,
         label=r"Rare Processes",
         label_short="rare",
-        color=(150, 150, 150),
+        color=(0, 255, 0),
         processes=[
             od.Process(
                 "TTZ_llnunu",

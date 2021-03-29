@@ -3,5 +3,5 @@ tasks.testing:mj.TestDummy:acceptance branch branches cancel-jobs cleanup-jobs c
 tasks.makefiles:mj.WriteDatasets:config directory-path fetch-output log-file print-deps print-output print-status remove-output version year
 tasks.makefiles:mj.WriteConfigData:config fetch-output log-file print-deps print-output print-status remove-output version year
 tasks.makefiles:mj.WriteFileset:config directory-path fetch-output log-file print-deps print-output print-status remove-output version year
-tasks.plotting:mj.PlotCoffeaHists:config fetch-output log-file log-scale print-deps print-output print-status remove-output scale-signal unblinded version year
+tasks.plotting:mj.PlotCoffeaHists:config debug fetch-output log-file log-scale print-deps print-output print-status remove-output scale-signal unblinded version year
 tasks.plotting:mj.ArrayPlotting:config fetch-output log-file print-deps print-output print-status remove-output version year
