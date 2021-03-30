@@ -18,7 +18,7 @@ class WriteDatasets(AnalysisTask):
     )
 
     def output(self):
-        return self.local_target("datasets.json")
+        return self.local_target("datasets_{}.json".format(self.year))
 
     def run(self):
         self.output().parent.touch()
@@ -42,7 +42,7 @@ class WriteConfigData(AnalysisTask):
         return WriteDatasets.req(self)
 
     def output(self):
-        return self.local_target("datasets.py")
+        return self.local_target("datasets_{}.py".format(self.year))
 
     def write_add_dataset(self, name, number, keys):
         return [
