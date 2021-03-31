@@ -58,3 +58,10 @@ Save variables into arrays for later computation, can be investigated by ArrayPl
 ```shell
 law run mj.CoffeaProcessor --version dev1 --local-scheduler --processor ArrayExporter
 ```
+
+Documentation links:
+Jagged arrays: https://github.com/scikit-hep/awkward-0.x/blob/master/docs/classes.adoc#methods
+coffea plotting: https://coffeateam.github.io/coffea/api/coffea.hist.plot1d.html
+coffea hists: https://coffeateam.github.io/coffea/api/coffea.hist.Hist.html
+law: https://github.com/riga/law
+order: https://github.com/riga/order
