@@ -27,12 +27,11 @@ class PlotCoffeaHists(ConfigTask):
     def requires(self):
         if self.debug:
             return CoffeaProcessor.req(
-                        self, processor="Histogramer"  , workflow="local", debug=True)
+                self, processor="Histogramer", workflow="local", debug=True
+            )
 
         else:
-            return CoffeaProcessor.req(
-            self, processor="Histogramer"
-            )
+            return CoffeaProcessor.req(self, processor="Histogramer")
 
     def output(self):
         path = ""
@@ -50,19 +49,19 @@ class PlotCoffeaHists(ConfigTask):
 
         # setting style
         # plt.rcParams.update({
-            # "text.usetex": True,
-            # "font.family": "sans-serif",
-            # "font.sans-serif": ["Helvetica"]})
+        # "text.usetex": True,
+        # "font.family": "sans-serif",
+        # "font.sans-serif": ["Helvetica"]})
 
         # create pdf object to save figures on separate pages
         with PdfPages(self.output().path) as pdf:
 
             # print dummy hist, because first one is broken
             # does not work either FIXME
-            #from IPython import embed;embed()
+            # from IPython import embed;embed()
             # plot each hist
             for var in tqdm(self.config_inst.variables, unit="variable"):
-                #print(var.get_full_x_title())
+                # print(var.get_full_x_title())
                 hists = inp[var.name]
                 categories = [h.name for h in hists.identifiers("category")]
 
@@ -91,7 +90,7 @@ class PlotCoffeaHists(ConfigTask):
                                 proc.label: [p[0].name for p in proc.walk_processes()]
                             }
                             # a = child_hists.sum("dataset", overflow='none')
-                            #from IPython import embed;embed()
+                            # from IPython import embed;embed()
 
                             # bg_hists.append()
                             # hist_attr.append([proc.label, proc.color])
@@ -107,20 +106,19 @@ class PlotCoffeaHists(ConfigTask):
                             hists_attr.append(proc.color)
 
                         if self.debug:
-                            #from IPython import embed;embed()
+                            # from IPython import embed;embed()
                             dat = hists.identifiers("dataset")
-                            bg=hists[(str(dat[0]), cat)].integrate("category")
-                            #for dat in hists.identifiers("dataset"):
-
+                            bg = hists[(str(dat[0]), cat)].integrate("category")
+                            # for dat in hists.identifiers("dataset"):
 
                     if not self.debug:
                         bg = bg_hists[0]
                         for i in range(1, len(bg_hists)):
                             bg.add(bg_hists[i])
 
-                    #from IPython import embed;embed()
+                    # from IPython import embed;embed()
                     # order the processes by magnitude of integral
-                    order_lut=bg.integrate(var.name).values()
+                    order_lut = bg.integrate(var.name).values()
                     bg_order = sorted(order_lut.items(), key=operator.itemgetter(1))
                     order = [name[0][0] for name in bg_order]
 
@@ -158,7 +156,7 @@ class PlotCoffeaHists(ConfigTask):
                         ax.set_yscale("log")
                         ax.set_ylim(0.0001, 1e9)
 
-                    #from IPython import embed;embed()
+                    # from IPython import embed;embed()
 
                     ax.set_xlabel(var.get_full_x_title())
                     ax.set_ylabel(var.get_full_y_title())

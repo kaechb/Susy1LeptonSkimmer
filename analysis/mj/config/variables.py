@@ -56,7 +56,7 @@ def setup_variables(cfg):
         name="lead_lep_pt",
         expression="lead_lep_pt",
         binning=(100, 0, 1000),
-        #unit="",
+        # unit="",
         x_title=r"$p_{T}^{lep1}$",
     )
 
@@ -72,7 +72,6 @@ def setup_variables(cfg):
         name="Dphi",
         expression="Dphi",
         binning=(64, -3.2, 3.2),
-        #unit="",
+        # unit="",
         x_title=r"$ \Delta \Phi $",
     )
-

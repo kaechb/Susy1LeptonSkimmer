@@ -22,7 +22,7 @@ config_2017 = analysis.add_config(run_2017.base_config.copy())
 for year, cfg in ("2016", config_2016), ("2017", config_2017):
     with od.uniqueness_context(cfg.campaign.name):
 
-        #from IPython import embed;embed()
+        # from IPython import embed;embed()
         campaign = cfg.campaign
 
         setup_processes(cfg)
@@ -31,9 +31,7 @@ for year, cfg in ("2016", config_2016), ("2017", config_2017):
         for dat in cfg.datasets:
             dat.add_process(cfg.get_process(dat.name))
 
-
         setup_variables(cfg)
-
 
         cfg.set_aux(
             "signal_process",

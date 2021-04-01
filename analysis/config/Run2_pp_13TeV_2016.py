@@ -35,8 +35,8 @@ cfg.set_aux("lumi", 35922.0)
 from config.processes import setup_processes
 from config.datasets import setup_datasets
 
-#setup_processes(cfg)
-#setup_datasets(cfg, campaign=campaign)
+# setup_processes(cfg)
+# setup_datasets(cfg, campaign=campaign)
 
-#for dat in cfg.datasets:
+# for dat in cfg.datasets:
 #    dat.add_process(cfg.get_process(dat.name))

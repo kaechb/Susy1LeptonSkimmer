@@ -200,7 +200,7 @@ def setup_processes(cfg):
         300,
         label=r"$W+Jets \rightarrow l \nu$",
         label_short="W+JEts",
-        color=(255, 165 , 0),
+        color=(255, 165, 0),
         processes=[
             od.Process(
                 "WJets_HT70to100",

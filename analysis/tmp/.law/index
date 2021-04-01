@@ -5,3 +5,4 @@ tasks.makefiles:mj.WriteConfigData:config fetch-output log-file print-deps print
 tasks.makefiles:mj.WriteFileset:config directory-path fetch-output log-file print-deps print-output print-status remove-output version year
 tasks.plotting:mj.PlotCoffeaHists:config debug fetch-output log-file log-scale print-deps print-output print-status remove-output scale-signal unblinded version year
 tasks.plotting:mj.ArrayPlotting:config fetch-output log-file print-deps print-output print-status remove-output version year
+tasks.arraypreparation:mj.ArrayNormalisation:config fetch-output log-file print-deps print-output print-status remove-output version year

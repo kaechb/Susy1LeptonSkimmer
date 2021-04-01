@@ -23,6 +23,7 @@ from coffea.processor.accumulator import (
 
 class BaseProcessor(processor.ProcessorABC):
     individal_weights = False
+
     # jes_shifts = False
     # dataset_shifts = False
 
@@ -232,6 +233,25 @@ class BaseSelection:
             # weightUp = events.JetMediumCSVBTagSFUp,
             # weightDown= events.JetMediumCSVBTagSFDown,
             # )
+        """
+        veto leptons:
+        muons loose working point
+        electrons: veto WP of cut based electron id without cut on relative isolation
+        medium wp of vut based muon ID used for good muon selection
+        good electrons tight wp of cut based electron ID without relative isolation cut
+        conversion veto& zero lost hits in innter tracker for good electrons, reject converted photons
+
+        isolation variable: pt sum of all objects in cone divided by lep pt
+        p T < 50 GeV, R = 0.2; for 50 GeV < p T < 200 GeV,
+        R = 10 GeV/p T ; and for p T > 200 GeV, R = 0.05.
+
+        In addition to the lepton veto, we also veto isolated tracks that could stem from not well iden-
+        tified leptons. Charged PF tracks from the primary vertex with p T > 5 GeV are selected, and an
+        isolation variable Rel Iso is defined as the p T sum of all charged tracks within a cone of R = 0.3
+        around the track candidate (excluding the candidate itself), divided by the track p T . We require
+        Rel Iso < 0.1 ( 0.2 ) for hadronic (leptonic) tracks. The isolated track with the the highest-p T and
+        opposite charge with respect to the selected lepton is chosen.
+        """
 
         # from IPython import embed
 

@@ -11,12 +11,12 @@ campaign = od.Campaign("Run2_pp_13TeV_2017", 11, ecm=13, bx=25)
 
 # base config
 
-base_config= cfg = od.Config(campaign)
+base_config = cfg = od.Config(campaign)
 
 ch_e = cfg.add_channel("e", 1, context=campaign.name)
 ch_mu = cfg.add_channel("mu", 2, context=campaign.name)
 
-#FIXME
+# FIXME
 # store b-tagger working points
 cfg.set_aux(
     "working_points",
@@ -29,7 +29,7 @@ cfg.set_aux(
     },
 )
 
-#FIXME
+# FIXME
 cfg.set_aux("lumi", 41296.082)
 
 
@@ -37,8 +37,8 @@ cfg.set_aux("lumi", 41296.082)
 from config.processes import setup_processes
 from config.datasets import setup_datasets
 
-#setup_processes(cfg_17)
-#setup_datasets(cfg_17, campaign=campaign)
+# setup_processes(cfg_17)
+# setup_datasets(cfg_17, campaign=campaign)
 
-#for dat in cfg_17.datasets:
+# for dat in cfg_17.datasets:
 #    dat.add_process(cfg_17.get_process(dat.name))
