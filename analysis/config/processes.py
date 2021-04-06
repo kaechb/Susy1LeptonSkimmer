@@ -505,6 +505,54 @@ def setup_processes(cfg):
         ],
     )
 
+    # write datasets, no crosssection, is_data flag instead
+
+    cfg.add_process(
+        "data_electron",
+        700,
+        label=r"data electron",
+        label_short="dat ele",
+        color=(0, 0, 0),
+        processes=[
+            od.Process("data_e_B", 701, label=r"data", is_data=True),
+            # od.Process(
+            # "data_e_B_v2",
+            # 702,
+            # label=r"data",
+            # is_data=True
+            # ),
+            od.Process("data_e_C", 703, label=r"data", is_data=True),
+            od.Process("data_e_D", 704, label=r"data", is_data=True),
+            od.Process("data_e_E", 705, label=r"data", is_data=True),
+            od.Process("data_e_F", 706, label=r"data", is_data=True),
+            od.Process("data_e_G", 707, label=r"data", is_data=True),
+            od.Process("data_e_H", 708, label=r"data", is_data=True),
+        ],
+    )
+
+    cfg.add_process(
+        "data_muon",
+        800,
+        label=r"data muon",
+        label_short="dat mu",
+        color=(0, 0, 0),
+        processes=[
+            od.Process("data_mu_B", 801, label=r"data", is_data=True),
+            # od.Process(
+            # "data_e_B_v2",
+            # 702,
+            # label=r"data",
+            # is_data=True
+            # ),
+            od.Process("data_mu_C", 803, label=r"data", is_data=True),
+            od.Process("data_mu_D", 804, label=r"data", is_data=True),
+            od.Process("data_mu_E", 805, label=r"data", is_data=True),
+            od.Process("data_mu_F", 806, label=r"data", is_data=True),
+            od.Process("data_mu_G", 807, label=r"data", is_data=True),
+            od.Process("data_mu_H", 808, label=r"data", is_data=True),
+        ],
+    )
+
     """
 
 

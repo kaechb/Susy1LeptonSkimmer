@@ -7,12 +7,11 @@ import copy
 import config.Run2_pp_13TeV_2016 as run_2016
 import config.Run2_pp_13TeV_2017 as run_2017
 
-# add dataset and processes, more setup
-from config.processes import setup_processes
-from config.datasets import setup_datasets
-
+# categories and variables, more setup
 from .categories import setup_categories
 from .variables import setup_variables
+
+from config.processes import setup_processes
 
 # create the analysis
 analysis = od.Analysis("mj", 1)
@@ -27,9 +26,16 @@ for year, cfg in ("2016", config_2016), ("2017", config_2017):
         # from IPython import embed;embed()
         campaign = cfg.campaign
 
-        setup_processes(cfg)
-        setup_datasets(cfg, campaign=campaign)
+        if year == "2016":
+            from config.datasets_2016 import setup_datasets
 
+            setup_datasets(cfg, campaign=campaign)
+        else:
+            from config.datasets_2017 import setup_datasets
+
+            setup_datasets(cfg, campaign=campaign)
+
+        setup_processes(cfg)
         for dat in cfg.datasets:
             dat.add_process(cfg.get_process(dat.name))
 
@@ -214,44 +220,32 @@ for year, cfg in ("2016", config_2016), ("2017", config_2017):
                     "ZZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8_RunIISummer16NanoAODv6-PUMoriond17_Nano25Oct2019_102X_mcRun2_asymptotic_v7-v1_NANOAODSIM"
                 ],
                 # "tZq_ll4f": [],
+                "data_e_B_v1": [
+                    "SingleElectron_Run2016B_ver1-Nano25Oct2019_ver1-v1_NANOAOD",
+                    "SingleElectron_Run2016B_ver2-Nano25Oct2019_ver2-v1_NANOAOD",
+                ],
+                "data_e_C": ["SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD"],
+                "data_e_D": ["SingleElectron_Run2016D-Nano25Oct2019-v1_NANOAOD"],
+                "data_e_E": ["SingleElectron_Run2016E-Nano25Oct2019-v1_NANOAOD"],
+                "data_e_F": ["SingleElectron_Run2016F-Nano25Oct2019-v1_NANOAOD"],
+                "data_e_G": ["SingleElectron_Run2016G-Nano25Oct2019-v1_NANOAOD"],
+                "data_e_H": ["SingleElectron_Run2016H-Nano25Oct2019-v1_NANOAOD"],
+                "data_mu_B": [
+                    "SingleMuon_Run2016B_ver1-Nano25Oct2019_ver1-v1_NANOAOD",
+                    "SingleMuon_Run2016B_ver2-Nano25Oct2019_ver2-v1_NANOAOD",
+                ],
+                "data_mu_C": ["SingleMuon_Run2016C-Nano25Oct2019-v1_NANOAOD"],
+                "data_mu_D": ["SingleMuon_Run2016D-Nano25Oct2019-v1_NANOAOD"],
+                "data_mu_E": ["SingleMuon_Run2016E-Nano25Oct2019-v1_NANOAOD"],
+                "data_mu_F": ["SingleMuon_Run2016F-Nano25Oct2019-v1_NANOAOD"],
+                "data_mu_G": ["SingleMuon_Run2016G-Nano25Oct2019-v1_NANOAOD"],
+                "data_mu_H": ["SingleMuon_Run2016H-Nano25Oct2019-v1_NANOAOD"],
             },
         )
 
 """
-SingleMuon_Run2016B_ver2-Nano25Oct2019_ver2-v1_NANOAOD
 
-SingleElectron_Run2016H-Nano25Oct2019-v1_NANOAOD
-SingleElectron_Run2016G-Nano25Oct2019-v1_NANOAOD
-SingleMuon_Run2016F-Nano25Oct2019-v1_NANOAOD
-
-
-
-SingleElectron_Run2016B_ver1-Nano25Oct2019_ver1-v1_NANOAOD
-SingleMuon_Run2016C-Nano25Oct2019-v1_NANOAOD
 ST_tW_top_5f_inclusiveDecays_13TeV-powheg-pythia8_TuneCUETP8M1_RunIISummer16NanoAODv6-PUMoriond17_Nano25Oct2019_102X_mcRun2_asymptotic_v7_ext1-v1_NANOAODSIM
-SingleMuon_Run2016D-Nano25Oct2019-v1_NANOAOD
-
-
-SingleMuon_Run2016B_ver1-Nano25Oct2019_ver1-v1_NANOAOD
-
-
-
-SingleElectron_Run2016B_ver2-Nano25Oct2019_ver2-v1_NANOAOD
-SingleMuon_Run2016G-Nano25Oct2019-v1_NANOAOD
-
-SingleMuon_Run2016H-Nano25Oct2019-v1_NANOAOD
-
-
-
 ST_tW_antitop_5f_inclusiveDecays_13TeV-powheg-pythia8_TuneCUETP8M1_RunIISummer16NanoAODv6-PUMoriond17_Nano25Oct2019_102X_mcRun2_asymptotic_v7_ext1-v1_NANOAODSIM
-SingleElectron_Run2016E-Nano25Oct2019-v1_NANOAOD
-
-SingleMuon_Run2016E-Nano25Oct2019-v1_NANOAOD
-
-SingleElectron_Run2016D-Nano25Oct2019-v1_NANOAOD
-SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD
-SingleElectron_Run2016F-Nano25Oct2019-v1_NANOAOD
-
-
 
 """

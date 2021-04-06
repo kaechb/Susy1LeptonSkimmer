@@ -128,16 +128,17 @@ class BaseSelection:
         selection = processor.PackedSelection()
         weights = processor.Weights(events.size, storeIndividual=self.individal_weights)
 
-        # from IPython import embed;embed()
-
         # branches = file.get("nominal")
         dataset = events.dataset
         output["n_events"][dataset] = events.size
         output["n_events"]["sum_all_events"] = events.size
 
         # access instances
-        data = dat = self.config.get_dataset(dataset)
+        data = self.config.get_dataset(dataset)
         process = self.config.get_process(dataset)
+
+        # print(process.name)
+        # from IPython import embed;embed()
 
         # event variables
         # look at all possibilities with events.columns
@@ -200,7 +201,7 @@ class BaseSelection:
         # from IPython import embed;embed()
 
         # apply some weights,  MC/data check beforehand
-        if not data.is_data:
+        if not process.is_data:
             weights.add("x_sec", process.xsecs[13.0].nominal)
 
             # from IPython import embed;embed()

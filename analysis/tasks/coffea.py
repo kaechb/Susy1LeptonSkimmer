@@ -86,7 +86,9 @@ class CoffeaProcessor(
         tic = time.time()
 
         if self.debug:
-            # from IPython import embed;embed()
+            from IPython import embed
+
+            embed()
             fileset = {self.debug_dataset: [fileset[self.debug_dataset][0]]}
 
         # , metrics

@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 class TestDummy(DatasetTask, law.LocalWorkflow, HTCondorWorkflow):  # AnalysisTask):
+    debug = BoolParameter(default=True)
+
     def output(self):
         return self.local_target("fileset.json")
 
@@ -30,6 +32,9 @@ class TestDummy(DatasetTask, law.LocalWorkflow, HTCondorWorkflow):  # AnalysisTa
         # make the output directory
 
         print("deeedledoo")
+        from IPython import embed
+
+        embed()
         self.output().parent.touch()
 
         # unchanged syntax

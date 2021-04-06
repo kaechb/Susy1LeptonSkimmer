@@ -42,7 +42,7 @@ class ArrayNormalisation(ConfigTask):
 
     def run(self):
 
-        self.output().parent.touch()
+        # self.output().parent.touch()
         # inp = self.input()["collection"][0].load()
         # array = self.input()["collection"].targets[0]["N0b_TTZ_qq"].load()
         # path=self.input()["collection"].targets[0].path
@@ -60,6 +60,8 @@ class ArrayNormalisation(ConfigTask):
         proc_dict = {}
         for cat in self.config_inst.categories.names():
             for proc in self.config_inst.processes:
+                if "data" in proc.name:
+                    continue
                 target_list = []
                 for child in proc.walk_processes():
                     key = cat + "_" + child[0].name
@@ -89,6 +91,6 @@ class ArrayNormalisation(ConfigTask):
         # prepare one-hot encoded labels?
         categories = np.stack((np.ones(len(array)), np.zeros(len(array))))
 
-        from IPython import embed
+        # from IPython import embed
 
-        embed()
+        # embed()

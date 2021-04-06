@@ -173,7 +173,7 @@ class ArrayPlotting(ConfigTask):
     def requires(self):
         return CoffeaProcessor.req(
             self, processor="ArrayExporter", debug=True, workflow="local"
-        )  # , workflow="local", branch=-1)
+        )
 
     def output(self):
         return self.local_target("hists")
