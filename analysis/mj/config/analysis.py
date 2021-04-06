@@ -1,4 +1,3 @@
-from .variables import setup_variables
 import scinum as sn
 import order as od
 import six
@@ -8,9 +7,12 @@ import copy
 import config.Run2_pp_13TeV_2016 as run_2016
 import config.Run2_pp_13TeV_2017 as run_2017
 
-# add dataset and processes
+# add dataset and processes, more setup
 from config.processes import setup_processes
 from config.datasets import setup_datasets
+
+from .categories import setup_categories
+from .variables import setup_variables
 
 # create the analysis
 analysis = od.Analysis("mj", 1)
@@ -32,6 +34,7 @@ for year, cfg in ("2016", config_2016), ("2017", config_2017):
             dat.add_process(cfg.get_process(dat.name))
 
         setup_variables(cfg)
+        setup_categories(cfg)
 
         cfg.set_aux(
             "signal_process",
