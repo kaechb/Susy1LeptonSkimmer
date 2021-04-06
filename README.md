@@ -26,6 +26,8 @@ law index collect all tasks, needed for new tasks
 
 # Current analysis tasks
 
+If you want to add datasets, add the corresponding processes, then map them.
+
 Writes the config/datasets.py, taken from previously skimmed files
 ```shell
 law run mj.WriteConfigData --local-scheduler --version dev1
@@ -60,8 +62,13 @@ law run mj.CoffeaProcessor --version dev1 --local-scheduler --processor ArrayExp
 ```
 
 Documentation links:
+
 Jagged arrays: https://github.com/scikit-hep/awkward-0.x/blob/master/docs/classes.adoc#methods
+
 coffea plotting: https://coffeateam.github.io/coffea/api/coffea.hist.plot1d.html
+
 coffea hists: https://coffeateam.github.io/coffea/api/coffea.hist.Hist.html
+
 law: https://github.com/riga/law
+
 order: https://github.com/riga/order
