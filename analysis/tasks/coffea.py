@@ -86,9 +86,7 @@ class CoffeaProcessor(
         tic = time.time()
 
         if self.debug:
-            from IPython import embed
-
-            embed()
+            # from IPython import embed;embed()
             fileset = {self.debug_dataset: [fileset[self.debug_dataset][0]]}
 
         # , metrics
@@ -101,7 +99,7 @@ class CoffeaProcessor(
             executor=processor.iterative_executor,
             # executor_args=dict(savemetrics=1,
             # schema=BaseSchema,),
-            chunksize=100000,
+            chunksize=10000,
         )
         # executor_args=dict(
         # nano=True,

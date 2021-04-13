@@ -221,6 +221,7 @@ class DatasetTask(ConfigTask):  # ShiftTask
 
 
 class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
+    debug = luigi.BoolParameter()
     """
     Batch systems are typically very heterogeneous by design, and so is HTCondor. Law does not aim
     to "magically" adapt to all possible HTCondor setups which would certainly end in a mess.
@@ -234,7 +235,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # from IPython import embed;embed()
         n = self.config_inst.datasets.len()
         # dividde workload
-        n = n * 3
+        n = n * 1
         if self.debug:
             n = 1
         return list(range(n))
@@ -262,7 +263,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.custom_content.append(("universe", "vanilla"))
         # require more RAM on CPU
         # config.custom_content.append(("request_cpus", "1"))
-        config.custom_content.append(("request_memory", "25000"))
+        config.custom_content.append(("request_memory", "5000"))
         config.custom_content.append(("+RequestRuntime = 86400"))
         # config.custom_content.append(("Request_GPUs", "0"))
         # config.custom_content.append(("Request_GpuMemory", "0"))

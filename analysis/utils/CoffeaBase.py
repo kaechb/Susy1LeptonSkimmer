@@ -3,8 +3,8 @@ import coffea
 # from coffea.processor import ProcessorABC
 # import law
 import numpy as np
-import uproot4 as up
-import awkward1 as ak
+import uproot as up
+import awkward as ak
 from coffea.nanoevents import NanoEventsFactory, NanoAODSchema
 from coffea import hist, processor
 from coffea.hist.hist_tools import DenseAxis, Hist
@@ -54,7 +54,7 @@ class BaseProcessor(processor.ProcessorABC):
         return self._accumulator
 
     def get_dataset(self, events):
-        return events.dataset  # self.config.get_dataset(events.metadata["dataset"])
+        return events.metadata["dataset"]
 
     def get_dataset_shift(self, events):
         return events.metadata["dataset"][1]
@@ -111,27 +111,36 @@ class BaseSelection:
         )
 
     def arrays(self, X):
+        # from IPython import embed;embed()
         return dict(
             # lep=self.obj_arrays(X["good_leptons"], 1, ("pdgId", "charge")),
             # jet=self.obj_arrays(X["good_jets"], 4, ("btagDeepFlavB",)),
             hl=np.stack(
-                [X[var].astype(np.float32) for var in self.config.variables.names()],
+                [
+                    ak.to_numpy(X[var]).astype(np.float32)
+                    for var in self.config.variables.names()
+                ],
                 axis=-1,
             ),
             # meta=X["event"].astype(np.int64),
         )
 
+    def add_to_selection(self, selection, name, array):
+        return selection.add(name, ak.to_numpy(array))
+
     def select(self, events):
 
         # set up stuff to fill
+
         output = self.accumulator.identity()
         selection = processor.PackedSelection()
-        weights = processor.Weights(events.size, storeIndividual=self.individal_weights)
+        size = events.metadata["entrystop"] - events.metadata["entrystart"]
+        weights = processor.Weights(size, storeIndividual=self.individal_weights)
 
         # branches = file.get("nominal")
-        dataset = events.dataset
-        output["n_events"][dataset] = events.size
-        output["n_events"]["sum_all_events"] = events.size
+        dataset = events.metadata["dataset"]
+        output["n_events"][dataset] = size
+        output["n_events"]["sum_all_events"] = size
 
         # access instances
         data = self.config.get_dataset(dataset)
@@ -140,47 +149,51 @@ class BaseSelection:
         # print(process.name)
         # from IPython import embed;embed()
 
-        # event variables
-        # look at all possibilities with events.columns
-        METPt = events.METPt
-        W_mt = events.WBosonMt
-
         # leptons variables
         n_leptons = events.nLepton
         lead_lep_pt = events.LeptonPt[:, 0]
-        tight_lep = events.LeptonTightId[:, 0]
+        # tight_lep = events.LeptonTightId[:, 0]
+        lep_charge = events.LeptonCharge
+        lep_pdgid = events.LeptonPdgId
 
-        leptons = ak.zip(
-            {
-                "pt": events.LeptonPt,
-                "eta": events.LeptonEta,
-                "phi": events.LeptonPhi,
-                "mass": events.LeptonMass,
-                "charge": events.LeptonCharge,
-            },
-            with_name="PtEtaPhiMCandidate",
+        # construct lepton veto mask
+        # hacky: sort leptons around and then use the  == 2 case
+        veto_lepton = np.where(
+            events.nLepton == 2,
+            ak.sort(events.LeptonPt, ascending=True)[:, 0] < 10,
+            (n_leptons == 1),
         )
 
-        # lep selection
-        lep_selection = (n_leptons == 1) & (tight_lep) & (lead_lep_pt > 10)
+        # muon selection
+        muon_selection = events.LeptonMediumId[:, 0] & (abs(lep_pdgid[:, 0]) == 13)
+        # ele selection
+        electron_selection = events.LeptonTightId[:, 0] & (abs(lep_pdgid[:, 0]) == 11)
 
-        selection.add("lep_selection", ak.to_numpy(lep_selection))
+        # lep selection
+        lep_selection = (
+            (lead_lep_pt > 25) & veto_lepton & (muon_selection | electron_selection)
+        )
+        self.add_to_selection(selection, "lep_selection", ak.to_numpy(lep_selection))
 
         # jet variables
         n_jets = events.nJet
         n_btags = events.nMediumDFBTagJet
         jet_mass_1 = events.JetMass[:, 0]
 
+        # event variables
+        # look at all possibilities with events.columns
+        METPt = events.METPt
+        W_mt = events.WBosonMt
         Dphi = events.DeltaPhi
         LT = events.LT
         HT = events.HT
         sorted_jets = ak.sort(events.JetPt, ascending=False)
 
         baseline_selection = (
-            (lead_lep_pt > 25)
+            # (lead_lep_pt > 25)
             # &veto lepton > 10
             # &No isolated track with p T ≥ 10 GeV and M T2 < 60 GeV (80 GeV) for hadronic (leptonic)
-            & (sorted_jets[:, 0] > 80)
+            (sorted_jets[:, 0] > 80)
             & (LT > 250)
             & (HT > 500)
             & (n_jets >= 3)
@@ -188,15 +201,15 @@ class BaseSelection:
 
         zero_b = n_btags == 0
         multi_b = n_btags >= 1
-        selection.add("baseline_selection", ak.to_numpy(baseline_selection))
-        selection.add("zero_b", zero_b)
-        selection.add("multi_b", multi_b)
+        self.add_to_selection(selection, "baseline_selection", baseline_selection)
+        self.add_to_selection(selection, "zero_b", zero_b)
+        self.add_to_selection(selection, "multi_b", multi_b)
 
         # add trigger selections
-        selection.add("HLTElectronOr", events.HLTElectronOr)
-        selection.add("HLTLeptonOr", events.HLTLeptonOr)
-        selection.add("HLTMETOr", events.HLTMETOr)
-        selection.add("HLTMuonOr", events.HLTMuonOr)
+        self.add_to_selection(selection, "HLTElectronOr", events.HLTElectronOr)
+        self.add_to_selection(selection, "HLTLeptonOr", events.HLTLeptonOr)
+        self.add_to_selection(selection, "HLTMETOr", events.HLTMETOr)
+        self.add_to_selection(selection, "HLTMuonOr", events.HLTMuonOr)
 
         # from IPython import embed;embed()
 
@@ -254,9 +267,7 @@ class BaseSelection:
         opposite charge with respect to the selected lepton is chosen.
         """
 
-        # from IPython import embed
-
-        # embed()
+        # from IPython import embed;embed()
 
         common = ["baseline_selection", "lep_selection"]
 
