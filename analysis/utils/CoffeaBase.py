@@ -126,7 +126,7 @@ class BaseSelection:
         )
 
     def add_to_selection(self, selection, name, array):
-        return selection.add(name, ak.to_numpy(array))
+        return selection.add(name, ak.to_numpy(array, allow_missing=True))
 
     def select(self, events):
 
@@ -158,11 +158,13 @@ class BaseSelection:
 
         # construct lepton veto mask
         # hacky: sort leptons around and then use the  == 2 case
-        veto_lepton = np.where(
-            events.nLepton == 2,
-            ak.sort(events.LeptonPt, ascending=True)[:, 0] < 10,
-            (n_leptons == 1),
-        )
+        # veto_lepton = np.where(
+        # events.nLepton == 2
+        # ,ak.sort(events.LeptonPt, ascending=True) [:,0] < 10
+        # ,(n_leptons == 1)
+        # )
+        two_lep = ak.mask(events.LeptonPt, (events.nLepton == 2))
+        veto_lepton = two_lep[:, 1] < 10
 
         # muon selection
         muon_selection = events.LeptonMediumId[:, 0] & (abs(lep_pdgid[:, 0]) == 13)
@@ -171,7 +173,9 @@ class BaseSelection:
 
         # lep selection
         lep_selection = (
-            (lead_lep_pt > 25) & veto_lepton & (muon_selection | electron_selection)
+            (lead_lep_pt > 25)
+            & (veto_lepton | (events.nLepton == 1))
+            & (muon_selection | electron_selection)
         )
         self.add_to_selection(selection, "lep_selection", ak.to_numpy(lep_selection))
 
@@ -180,23 +184,34 @@ class BaseSelection:
         n_btags = events.nMediumDFBTagJet
         jet_mass_1 = events.JetMass[:, 0]
 
+        # jest isolation selection
+        jet_iso_sel = (
+            (events.IsoTrackHadronicDecay)
+            & (events.IsoTrackPt > 10)
+            & (events.IsoTrackMt2 < 60)
+        )
+        # values of variables seem faulty, #FIXME
+        # self.add_to_selection(selection,"jet_iso_sel", ~jet_iso_sel[:,0])
+
         # event variables
-        # look at all possibilities with events.columns
+        # look at all possibilities with dir(events)
         METPt = events.METPt
         W_mt = events.WBosonMt
         Dphi = events.DeltaPhi
         LT = events.LT
         HT = events.HT
-        sorted_jets = ak.sort(events.JetPt, ascending=False)
+        sorted_jets = ak.mask(
+            events.JetPt, (events.nJet >= 3)
+        )  # ak.sort(events.JetPt, ascending=False)
 
         baseline_selection = (
             # (lead_lep_pt > 25)
             # &veto lepton > 10
             # &No isolated track with p T ≥ 10 GeV and M T2 < 60 GeV (80 GeV) for hadronic (leptonic)
-            (sorted_jets[:, 0] > 80)
+            (sorted_jets[:, 1] > 80)
             & (LT > 250)
             & (HT > 500)
-            & (n_jets >= 3)
+            & (n_jets >= 3)  # kinda double, but keep it for now
         )
 
         zero_b = n_btags == 0
@@ -206,6 +221,11 @@ class BaseSelection:
         self.add_to_selection(selection, "multi_b", multi_b)
 
         # add trigger selections
+        HLTLeptonOr = events.HLTLeptonOr
+        HLTMETOr = events.HLTMETOr
+        HLTElectronOr = events.HLTElectronOr
+        HLTMuonOr = events.HLTMuonOr
+
         self.add_to_selection(selection, "HLTElectronOr", events.HLTElectronOr)
         self.add_to_selection(selection, "HLTLeptonOr", events.HLTLeptonOr)
         self.add_to_selection(selection, "HLTMETOr", events.HLTMETOr)
@@ -269,7 +289,7 @@ class BaseSelection:
 
         # from IPython import embed;embed()
 
-        common = ["baseline_selection", "lep_selection"]
+        common = ["baseline_selection", "lep_selection", "HLTLeptonOr", "HLTMETOr"]
 
         categories = dict(
             N0b=common + ["zero_b"],
@@ -353,12 +373,12 @@ class Histogramer(BaseProcessor, BaseSelection):
                 # value = out[var_name]
                 # generate mask for variable values
                 mask = np.ones(len(out[var_name]), dtype=bool)
+
                 for cut in out["categories"][cat]:
                     mask = mask & out[cut]
                     # value = value[out[cut]]
 
-                # from IPython import embed;embed()
-
+                mask = ak.to_numpy(mask).mask
                 values = {}
                 values["dataset"] = out["dataset"]
                 values["category"] = cat
@@ -368,8 +388,6 @@ class Histogramer(BaseProcessor, BaseSelection):
                 output["histograms"][var_name].fill(**values)
 
         # output["n_events"] = len(METPt)
-
-        # test
         return output
 
     def postprocess(self, accumulator):
