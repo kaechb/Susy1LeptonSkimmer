@@ -50,7 +50,9 @@ law run mj.CoffeaProcessor --version test1 --local-scheduler --debug --workflow 
 ```
 
 Plotting of hists into a pdf, log scale allows for y-axis change
+
 Groups subprocesses into parents, seperate plots for category-variables
+
 Unblinded keyword allows for addition of data points and adds a ratio plot of backgrounds to data
 
 ```shell
