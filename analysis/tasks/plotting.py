@@ -73,8 +73,6 @@ class PlotCoffeaHists(ConfigTask):
             "color": "r",
         }
 
-
-
         # create pdf object to save figures on separate pages
         with PdfPages(self.output().path) as pdf:
 
@@ -90,21 +88,23 @@ class PlotCoffeaHists(ConfigTask):
                     # lists for collecting and sorting hists
                     bg_hists = []
                     hists_attr = []
-                    data_hists= []
+                    data_hists = []
 
                     # enlargen figure
-                    #plt.figure(figsize=(8, 6), dpi=80)
+                    # plt.figure(figsize=(8, 6), dpi=80)
 
                     if self.unblinded:
                         # build canvas for data plotting
                         fig, (ax, rax) = plt.subplots(
-                                    2,
-                                    1,
-                                    figsize=(18, 10),
-                                    sharex=True,
-                                    gridspec_kw=dict(height_ratios=(3, 1), hspace=0,),
-                                )
-
+                            2,
+                            1,
+                            figsize=(18, 10),
+                            sharex=True,
+                            gridspec_kw=dict(
+                                height_ratios=(3, 1),
+                                hspace=0,
+                            ),
+                        )
 
                     else:
                         fig, ax = plt.subplots(figsize=(18, 10))
@@ -113,21 +113,22 @@ class PlotCoffeaHists(ConfigTask):
 
                         if "data" in proc.name and self.unblinded:
                             child_hists = hists[
-                                    [p[0].name for p in proc.walk_processes()], cat
-                                    ]
+                                [p[0].name for p in proc.walk_processes()], cat
+                            ]
                             mapping = {
-                                proc.label: [p[0].name for p in proc.walk_processes()
-                                             if not "B" in p[0].name]
-                                }
+                                proc.label: [
+                                    p[0].name
+                                    for p in proc.walk_processes()
+                                    if not "B" in p[0].name
+                                ]
+                            }
                             grouped = child_hists.group(
-                                   "dataset",
-                                    coffea.hist.Cat("process", proc.label_short),
-                                    mapping,
+                                "dataset",
+                                coffea.hist.Cat("process", proc.label_short),
+                                mapping,
                             ).integrate("category")
 
                             data_hists.append(grouped)
-
-
 
                         if not self.debug and not "data" in proc.name:
                             # for each process, map childs together to plot in one, get rid of cat axis
@@ -194,14 +195,18 @@ class PlotCoffeaHists(ConfigTask):
                     if self.unblinded:
                         # normally, we have only two kinds of data, if more, adapt
                         dat = data_hists[0].add(data_hists[1])
-                        data = dat.group("process",  coffea.hist.Cat("process", "data"), {"data": ['data electron','data muon']})
+                        data = dat.group(
+                            "process",
+                            coffea.hist.Cat("process", "data"),
+                            {"data": ["data electron", "data muon"]},
+                        )
                         coffea.hist.plot1d(
-                            data,#.project( "process", varName),
-                            #overlay="process",
+                            data,  # .project( "process", varName),
+                            # overlay="process",
                             error_opts=data_err_opts,
                             ax=ax,
-                            #overflow="none",
-                            #binwnorm=True,
+                            # overflow="none",
+                            # binwnorm=True,
                             clear=False,
                         )
                         coffea.hist.plotratio(
@@ -217,7 +222,6 @@ class PlotCoffeaHists(ConfigTask):
                         rax.set_ylabel("Ratio")
                         rax.set_ylim(0, 2)
 
-
                     # declare naming
                     leg = ax.legend(
                         title="{0}: {1}".format(cat, var.x_title),
@@ -231,14 +235,13 @@ class PlotCoffeaHists(ConfigTask):
                         ax.set_yscale("log")
                         ax.set_ylim(0.0001, 1e12)
                         # FIXME be careful with logarithmic ratios
-                        #if self.unblinded:
+                        # if self.unblinded:
                         #    rax.set_yscale("log")
                         #    rax.set_ylim(0.0001, 1e0)
 
                     ax.set_xlabel(var.get_full_x_title())
                     ax.set_ylabel(var.get_full_y_title())
                     ax.autoscale(axis="x", tight=True)
-
 
                     if self.unblinded:
                         rax.set_xlabel(var.get_full_x_title())
