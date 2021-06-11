@@ -14,7 +14,7 @@ from .variables import setup_variables
 from config.processes import setup_processes
 
 # create the analysis
-analysis = od.Analysis("mj", 1)
+analysis = od.Analysis("0b", 1)
 
 config_2016 = analysis.add_config(run_2016.base_config.copy())
 config_2017 = analysis.add_config(run_2017.base_config.copy())
@@ -44,7 +44,7 @@ for year, cfg in ("2016", config_2016), ("2017", config_2017):
 
         cfg.set_aux(
             "signal_process",
-            "T1tttt",
+            "T5qqqqWW",
         )
 
         cfg.set_aux(
