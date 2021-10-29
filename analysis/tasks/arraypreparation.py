@@ -91,6 +91,6 @@ class ArrayNormalisation(ConfigTask):
         # prepare one-hot encoded labels?
         categories = np.stack((np.ones(len(array)), np.zeros(len(array))))
 
-        # from IPython import embed
+        from IPython import embed
 
-        # embed()
+        embed()

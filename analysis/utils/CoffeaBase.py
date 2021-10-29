@@ -166,6 +166,23 @@ class BaseSelection:
         two_lep = ak.mask(events.LeptonPt, (events.nLepton == 2))
         veto_lepton = two_lep[:, 1] < 10
 
+        """
+        om gosh, that can be solved so much easier
+        look at
+        for i in range(500):
+            ...:     print(events.LeptonPt[:,1:2][i], events.LeptonPt[i])
+        events.LeptonPt[:,1:2] has only the second element, and if it doesnt exist, its empty
+        events.LeptonPt[:,1:2] > 10 produces [], False or True, as intended
+
+        works as well:
+        cut=(n_leptons>0)
+        events.LeptonPt.mask[cut]
+
+        In you want to consider combinations of all good particles in each event, so there are functions for constructing that.
+        ak.combinations(array.muons, 2).type
+        mu1, mu2 = ak.unzip(ak.combinations(array.muons, 2))
+        """
+
         # muon selection
         muon_selection = events.LeptonMediumId[:, 0] & (abs(lep_pdgid[:, 0]) == 13)
         # ele selection
@@ -177,7 +194,7 @@ class BaseSelection:
             & (veto_lepton | (events.nLepton == 1))
             & (muon_selection | electron_selection)
         )
-        self.add_to_selection(selection, "lep_selection", ak.to_numpy(lep_selection))
+        self.add_to_selection(selection, "lep_selection", lep_selection)
 
         # jet variables
         n_jets = events.nJet
@@ -200,6 +217,9 @@ class BaseSelection:
         Dphi = events.DeltaPhi
         LT = events.LT
         HT = events.HT
+
+        # after the tutorial
+        # this can be much easier a=sorted_jets[:,2:3]
         sorted_jets = ak.mask(
             events.JetPt, (events.nJet >= 3)
         )  # ak.sort(events.JetPt, ascending=False)
@@ -214,11 +234,15 @@ class BaseSelection:
             & (n_jets >= 3)  # kinda double, but keep it for now
         )
 
+        # base selection
         zero_b = n_btags == 0
         multi_b = n_btags >= 1
         self.add_to_selection(selection, "baseline_selection", baseline_selection)
         self.add_to_selection(selection, "zero_b", zero_b)
         self.add_to_selection(selection, "multi_b", multi_b)
+
+        # W tag?
+        # events.nGenMatchedW
 
         # add trigger selections
         HLTLeptonOr = events.HLTLeptonOr
@@ -231,13 +255,13 @@ class BaseSelection:
         self.add_to_selection(selection, "HLTMETOr", events.HLTMETOr)
         self.add_to_selection(selection, "HLTMuonOr", events.HLTMuonOr)
 
-        # from IPython import embed;embed()
+        from IPython import embed
+
+        embed()
 
         # apply some weights,  MC/data check beforehand
         if not process.is_data:
             weights.add("x_sec", process.xsecs[13.0].nominal)
-
-            # from IPython import embed;embed()
 
             # some weights have more than weight, not always consistent
             # take only first weight, since everything with more than 1 lep gets ejected
@@ -263,6 +287,34 @@ class BaseSelection:
                 weightUp=events.LeptonSFMVAUp[:, 0],
             )
 
+            weights.add(
+                "LeptonSFGSF",
+                events.LeptonSFGSF[:, 0],
+                weightDown=events.LeptonSFGSFDown[:, 0],
+                weightUp=events.LeptonSFGSFUp[:, 0],
+            )
+
+            weights.add(
+                "LeptonSFId",
+                events.LeptonSFId[:, 0],
+                weightDown=events.LeptonSFIdDown[:, 0],
+                weightUp=events.LeptonSFIdUp[:, 0],
+            )
+
+            weights.add(
+                "nISRWeight_Mar17",
+                events.nISRWeight_Mar17,
+                weightDown=events.nISRWeightDown_Mar17,
+                weightUp=events.nISRWeightDown_Mar17,
+            )
+
+            # weights.add(
+            # 'PileUpWeight',
+            # events.PileUpWeight[:,0],
+            # weightDown=events.PileUpWeightMinus[:,0],
+            # weightUp=events.PileUpWeightPlus[:,0],
+            # )
+
             # weights.add("JetMediumCSVBTagSF", events.JetMediumCSVBTagSF,
             # weightUp = events.JetMediumCSVBTagSFUp,
             # weightDown= events.JetMediumCSVBTagSFDown,
@@ -287,13 +339,25 @@ class BaseSelection:
         opposite charge with respect to the selected lepton is chosen.
         """
 
-        # from IPython import embed;embed()
-
         common = ["baseline_selection", "lep_selection", "HLTLeptonOr", "HLTMETOr"]
 
+        signalRegion = events.signalRegion == 1
+        controlRegion = events.signalRegion == 0
+        delta_phi = Dphi > 0.9
+        # from IPython import embed;embed()
+
+        self.add_to_selection(selection, "signalRegion", signalRegion)
+        self.add_to_selection(selection, "controlRegion", controlRegion)
+        self.add_to_selection(selection, "delta_phi", delta_phi)
+        # if you need to add more options
+        # signal_region = ["signalRegion"]
+        # control_region = ["controlRegion"]
+
         categories = dict(
-            N0b=common + ["zero_b"],
-            N1b=common + ["multi_b"],
+            N0b_SR=common + ["zero_b", "signalRegion"],
+            N1b_SR=common + ["multi_b", "signalRegion"],
+            N0b_CR=common + ["zero_b", "controlRegion"],
+            N1b_CR=common + ["multi_b", "controlRegion"],
         )
 
         return locals()
@@ -371,14 +435,22 @@ class Histogramer(BaseProcessor, BaseSelection):
             for cat in out["categories"].keys():
                 weight = weights.weight()
                 # value = out[var_name]
-                # generate mask for variable values
+                # generate blank mask for variable values
                 mask = np.ones(len(out[var_name]), dtype=bool)
 
+                # combine cuts together: problem, some have None values
                 for cut in out["categories"][cat]:
-                    mask = mask & out[cut]
+                    # rint(cut, "\n")
+                    cut_mask = ak.to_numpy(out[cut])
+                    if type(cut_mask) is np.ma.core.MaskedArray:
+                        cut_mask = cut_mask.mask
+                    mask = np.logical_and(mask, cut_mask)  # .mask
+                    # print(np.sum(mask))
                     # value = value[out[cut]]
 
-                mask = ak.to_numpy(mask).mask
+                # from IPython import embed;embed()
+
+                # mask = ak.to_numpy(mask).mask
                 values = {}
                 values["dataset"] = out["dataset"]
                 values["category"] = cat

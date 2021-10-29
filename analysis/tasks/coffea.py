@@ -48,7 +48,7 @@ class CoffeaProcessor(
         out = {
             cat + "_" + dat: self.local_target(cat + "_" + dat + ".npy")
             for dat in datasets
-            for cat in ["N0b", "N1b"]
+            for cat in self.config_inst.categories.names()
         }
         # from IPython import embed;embed()
         if self.processor == "Histogramer":
@@ -129,7 +129,6 @@ class CoffeaProcessor(
         if self.processor == "ArrayExporter":
             self.output().popitem()[1].parent.touch()
             for cat in out["arrays"]:
-                # from IPython import embed;embed()
                 self.output()[cat].dump(out["arrays"][cat]["hl"].value)
             # hacky way of defining if task is done FIXME
             # self.output().dump(np.array([1]))

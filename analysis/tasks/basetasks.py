@@ -69,8 +69,8 @@ class CampaignTask(BaseTask):
 
 
 class AnalysisTask(CampaignTask):
-    analysis_id = "mj"
-    # analysis_id = "0b"
+    # analysis_id = "mj"
+    analysis_id = "0b"
     # luigi.Parameter(
     # default="mj",
     # description="type of analysis, start with mj",

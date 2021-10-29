@@ -250,11 +250,11 @@ class PlotCoffeaHists(ConfigTask):
 
                     plt.tight_layout()
                     pdf.savefig(fig)
-                    fig.clear()
 
                     ax.cla()
                     if self.unblinded:
                         rax.cla()
+                    plt.close(fig)
 
             print("\n", " ---- Created {} pages ----".format(pdf.get_pagecount()), "\n")
 

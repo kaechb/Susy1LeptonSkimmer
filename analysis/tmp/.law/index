@@ -1,8 +1,8 @@
-tasks.coffea:mj.CoffeaProcessor:acceptance branch branches cancel-jobs cleanup-jobs config dataset debug end-branch fetch-output htcondor-pool htcondor-scheduler ignore-submission log-file no-poll parallel-jobs pilot poll-fails poll-interval print-deps print-output print-status processor remove-output retries shuffle-jobs start-branch tasks-per-job threads tolerance transfer-logs version walltime workflow year
-tasks.testing:mj.TestDummy:acceptance branch branches cancel-jobs cleanup-jobs config dataset debug end-branch fetch-output htcondor-pool htcondor-scheduler ignore-submission log-file no-poll parallel-jobs pilot poll-fails poll-interval print-deps print-output print-status remove-output retries shuffle-jobs start-branch tasks-per-job threads tolerance transfer-logs version walltime workflow year
-tasks.makefiles:mj.WriteDatasets:config directory-path fetch-output log-file print-deps print-output print-status remove-output version year
-tasks.makefiles:mj.WriteConfigData:config fetch-output log-file print-deps print-output print-status remove-output version year
-tasks.makefiles:mj.WriteFileset:config directory-path fetch-output log-file print-deps print-output print-status remove-output version year
-tasks.plotting:mj.PlotCoffeaHists:config debug fetch-output log-file log-scale print-deps print-output print-status remove-output scale-signal unblinded version year
-tasks.plotting:mj.ArrayPlotting:config fetch-output log-file print-deps print-output print-status remove-output version year
-tasks.arraypreparation:mj.ArrayNormalisation:config fetch-output log-file print-deps print-output print-status remove-output version year
+tasks.coffea:0b.CoffeaProcessor:acceptance branch branches cancel-jobs cleanup-jobs config dataset debug end-branch fetch-output htcondor-pool htcondor-scheduler ignore-submission log-file no-poll parallel-jobs pilot poll-fails poll-interval print-deps print-output print-status processor remove-output retries shuffle-jobs start-branch tasks-per-job threads tolerance transfer-logs version walltime workflow year
+tasks.testing:0b.TestDummy:acceptance branch branches cancel-jobs cleanup-jobs config dataset debug end-branch fetch-output htcondor-pool htcondor-scheduler ignore-submission log-file no-poll parallel-jobs pilot poll-fails poll-interval print-deps print-output print-status remove-output retries shuffle-jobs start-branch tasks-per-job threads tolerance transfer-logs version walltime workflow year
+tasks.makefiles:0b.WriteDatasets:config directory-path fetch-output log-file print-deps print-output print-status remove-output version year
+tasks.makefiles:0b.WriteConfigData:config fetch-output log-file print-deps print-output print-status remove-output version year
+tasks.makefiles:0b.WriteFileset:config directory-path fetch-output log-file print-deps print-output print-status remove-output version year
+tasks.plotting:0b.PlotCoffeaHists:config debug fetch-output log-file log-scale print-deps print-output print-status remove-output scale-signal unblinded version year
+tasks.plotting:0b.ArrayPlotting:config fetch-output log-file print-deps print-output print-status remove-output version year
+tasks.arraypreparation:0b.ArrayNormalisation:config fetch-output log-file print-deps print-output print-status remove-output version year
