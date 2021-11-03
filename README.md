@@ -64,6 +64,11 @@ Save variables into arrays for later computation, can be investigated by ArrayPl
 law run mj.CoffeaProcessor --version dev1 --local-scheduler --processor ArrayExporter
 ```
 
+transfer coffea hists to hists in a root file
+```shell
+law run 0b.GroupCoffeaProcesses --version test1 --local-scheduler
+```
+
 Documentation links:
 
 Jagged arrays: https://github.com/scikit-hep/awkward-0.x/blob/master/docs/classes.adoc#methods
