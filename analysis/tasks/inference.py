@@ -8,22 +8,18 @@ import luigi
 
 # other modules
 from tasks.basetasks import DatasetTask, HTCondorWorkflow
-from tasks.coffea import CoffeaProcessor
+from tasks.coffea import GroupCoffeaProcesses
 
-
-class DatacardProducer(AnalysisTask):  # , CMSSWSandboxTask):
+class DatacardProducer(DatasetTask):  #, CMSSWSandboxTask):
 
     "old example task to show datacard producing in task"
 
     signal_bin = luigi.Parameter(default="ab_1234", description="bin to plot")
-    variable = luigi.Parameter(
-        default="MET",
-        description="variable to fit",
-    )
+    variable = luigi.Parameter(default="MET", description="variable to fit",)
 
     def requires(self):
-        # check if we need root or arrays or coffea hists...
-        return CoffeaProcessor.req(self)
+        # check if we need root or arrays or coffea hists, root for now...
+        return GroupCoffeaProcesses.req(self)
 
     def output(self):
         return {
@@ -36,7 +32,7 @@ class DatacardProducer(AnalysisTask):  # , CMSSWSandboxTask):
             super(DatacardProducer, self).store_parts()
             + (self.analysis_choice,)
             + (self.signal_bin,)
-            + (self.category,)
+            + (self.variable,)
         )
 
     def make_pairs(self, x):
@@ -45,20 +41,25 @@ class DatacardProducer(AnalysisTask):  # , CMSSWSandboxTask):
     @law.decorator.timeit(publish_message=True)
     @law.decorator.safe_output
     def run(self):
-        # ROOT = load_ROOT()
-        import ROOT
-        from CombineHarvester.CombineTools import ch
+        #import ROOT
+        # normally, import combine using CMSSW
+        #from CombineHarvester.CombineTools import ch
+        import sys
+        sys.path.append("/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_2_13/src/CombineHarvester/CombineTools/python")
+        import ch
 
         from utils.datacard import DatacardWriter
-
         # either import the datacard writer or heritage from him
 
-        channel = self.category.split("_")[0]
-        dw = DatacardWriter(
-            ch=ch, analysis=self.analysis_choice, mass="125", era="2017"
-        )
+        channel = self.signal_bin.split("_")[0]
 
-        categories = self.make_pairs([self.category])
+        categories = self.make_pairs([self.config_inst.categories.names()])
+
+        from IPython import embed;embed()
+
+        dw = DatacardWriter(
+            ch=ch, analysis=self.analysis_choice, mass="125", era="2016"
+        )
 
         all_processes = self.config_inst.get_aux("process_groups")["default"]
         for process in all_processes:

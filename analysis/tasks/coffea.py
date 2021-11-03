@@ -10,6 +10,7 @@ from coffea.nanoevents import TreeMakerSchema, BaseSchema, NanoAODSchema
 import json
 import time
 import numpy as np
+import uproot as up
 from rich.console import Console
 
 # other modules
@@ -61,6 +62,7 @@ class CoffeaProcessor(
             parts += ("debug", self.debug_dataset)
         return super(CoffeaProcessor, self).store_parts() + parts
 
+    @law.decorator.timeit(publish_message=True)
     def run(self):
         with open(self.input().path, "r") as read_file:
             fileset = json.load(read_file)
@@ -78,6 +80,7 @@ class CoffeaProcessor(
         # del fileset[e]
         # logger.warning("skipping empty datasets: %s", ", ".join(map(str, sorted(empty))))
 
+        # declare professor
         if self.processor == "ArrayExporter":
             processor_inst = ArrayExporter(self)
         if self.processor == "Histogramer":
@@ -90,6 +93,7 @@ class CoffeaProcessor(
             fileset = {self.debug_dataset: [fileset[self.debug_dataset][0]]}
 
         # , metrics
+        # call imported processor, magic happens here
         out = processor.run_uproot_job(
             fileset,
             treename="nominal",
@@ -136,3 +140,64 @@ class CoffeaProcessor(
         if self.processor == "Histogramer":
             self.output().parent.touch()
             self.output().dump(out["histograms"])
+
+
+class GroupCoffeaProcesses(DatasetTask):
+
+    """
+    Task to group coffea hist together if needed (e.g. get rid of an axis)
+    Or reproduce root files for Combine
+    """
+
+    # histogram naming template:
+    template = "{variable}_{process}_{category}"
+
+
+    def requires(self):
+        return CoffeaProcessor.req(self, processor="Histogramer")
+
+    def output(self):
+        return self.local_target("legacy_hists.root")
+        #return dict(
+        #    coffea=self.local_target("legacy_hists.coffea"),
+        #    root=self.local_target("legacy_hists.root"),
+        #)
+
+    def store_parts(self):
+        return super(GroupCoffeaProcesses, self).store_parts() + (self.analysis_choice,)
+
+    @law.decorator.timeit(publish_message=True)
+    @law.decorator.safe_output
+    def run(self):
+
+        import uproot3 as up3
+        # needed for newtrees
+        #hists = coffea.util.load(self.input().path)
+        hists = self.input()['collection'][0].load()
+
+        datasets = self.config_inst.datasets.names()
+        categories = self.config_inst.categories.names()
+
+        # create dir and write coffea to root hists
+        self.output().parent.touch()
+        with up3.recreate(self.output().path) as root_file:
+            var_keys = hists.keys()
+            #var1='METPt'
+            for var in var_keys:
+                for dat in datasets:
+                    for cat in categories:
+
+                        # hacky way to get the hidden array of dict values
+                        #arr=list(hists[var1][('TTJets_sl_fromt','N1b_CR')].values())[0]
+
+                        #root_file[categories[0]] = up3.newtree({self.template.format(variable=var1, process=datasets[0], category=categories[0]):np.float64})
+                        #root_file[categories[0]].extend({self.template.format(variable=var1, process=datasets[0], category=categories[0]):arr})
+
+                        hist_name = self.template.format(variable=var, process=dat, category=cat)
+                        if "data" in dat:
+                            hist_name = self.template.format(variable=var, process="data_obs", category=cat)
+
+                        #from IPython import embed;embed()
+                        root_file[hist_name] = coffea.hist.export1d(hists[var][(dat,cat)].project(var))
+
+                        # cutflow variable may have to be an exception
