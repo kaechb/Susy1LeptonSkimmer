@@ -10,12 +10,16 @@ import luigi
 from tasks.basetasks import DatasetTask, HTCondorWorkflow
 from tasks.coffea import GroupCoffeaProcesses
 
-class DatacardProducer(DatasetTask):  #, CMSSWSandboxTask):
+
+class DatacardProducer(DatasetTask):  # , CMSSWSandboxTask):
 
     "old example task to show datacard producing in task"
 
     signal_bin = luigi.Parameter(default="ab_1234", description="bin to plot")
-    variable = luigi.Parameter(default="MET", description="variable to fit",)
+    variable = luigi.Parameter(
+        default="MET",
+        description="variable to fit",
+    )
 
     def requires(self):
         # check if we need root or arrays or coffea hists, root for now...
@@ -41,21 +45,27 @@ class DatacardProducer(DatasetTask):  #, CMSSWSandboxTask):
     @law.decorator.timeit(publish_message=True)
     @law.decorator.safe_output
     def run(self):
-        #import ROOT
+        # import ROOT
         # normally, import combine using CMSSW
-        #from CombineHarvester.CombineTools import ch
+        # from CombineHarvester.CombineTools import ch
         import sys
-        sys.path.append("/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_2_13/src/CombineHarvester/CombineTools/python")
+
+        sys.path.append(
+            "/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_2_13/src/CombineHarvester/CombineTools/python"
+        )
         import ch
 
         from utils.datacard import DatacardWriter
+
         # either import the datacard writer or heritage from him
 
         channel = self.signal_bin.split("_")[0]
 
         categories = self.make_pairs([self.config_inst.categories.names()])
 
-        from IPython import embed;embed()
+        from IPython import embed
+
+        embed()
 
         dw = DatacardWriter(
             ch=ch, analysis=self.analysis_choice, mass="125", era="2016"

@@ -152,16 +152,15 @@ class GroupCoffeaProcesses(DatasetTask):
     # histogram naming template:
     template = "{variable}_{process}_{category}"
 
-
     def requires(self):
         return CoffeaProcessor.req(self, processor="Histogramer")
 
     def output(self):
         return self.local_target("legacy_hists.root")
-        #return dict(
+        # return dict(
         #    coffea=self.local_target("legacy_hists.coffea"),
         #    root=self.local_target("legacy_hists.root"),
-        #)
+        # )
 
     def store_parts(self):
         return super(GroupCoffeaProcesses, self).store_parts() + (self.analysis_choice,)
@@ -171,9 +170,10 @@ class GroupCoffeaProcesses(DatasetTask):
     def run(self):
 
         import uproot3 as up3
+
         # needed for newtrees
-        #hists = coffea.util.load(self.input().path)
-        hists = self.input()['collection'][0].load()
+        # hists = coffea.util.load(self.input().path)
+        hists = self.input()["collection"][0].load()
 
         datasets = self.config_inst.datasets.names()
         categories = self.config_inst.categories.names()
@@ -182,22 +182,28 @@ class GroupCoffeaProcesses(DatasetTask):
         self.output().parent.touch()
         with up3.recreate(self.output().path) as root_file:
             var_keys = hists.keys()
-            #var1='METPt'
+            # var1='METPt'
             for var in var_keys:
                 for dat in datasets:
                     for cat in categories:
 
                         # hacky way to get the hidden array of dict values
-                        #arr=list(hists[var1][('TTJets_sl_fromt','N1b_CR')].values())[0]
+                        # arr=list(hists[var1][('TTJets_sl_fromt','N1b_CR')].values())[0]
 
-                        #root_file[categories[0]] = up3.newtree({self.template.format(variable=var1, process=datasets[0], category=categories[0]):np.float64})
-                        #root_file[categories[0]].extend({self.template.format(variable=var1, process=datasets[0], category=categories[0]):arr})
+                        # root_file[categories[0]] = up3.newtree({self.template.format(variable=var1, process=datasets[0], category=categories[0]):np.float64})
+                        # root_file[categories[0]].extend({self.template.format(variable=var1, process=datasets[0], category=categories[0]):arr})
 
-                        hist_name = self.template.format(variable=var, process=dat, category=cat)
+                        hist_name = self.template.format(
+                            variable=var, process=dat, category=cat
+                        )
                         if "data" in dat:
-                            hist_name = self.template.format(variable=var, process="data_obs", category=cat)
+                            hist_name = self.template.format(
+                                variable=var, process="data_obs", category=cat
+                            )
 
-                        #from IPython import embed;embed()
-                        root_file[hist_name] = coffea.hist.export1d(hists[var][(dat,cat)].project(var))
+                        # from IPython import embed;embed()
+                        root_file[hist_name] = coffea.hist.export1d(
+                            hists[var][(dat, cat)].project(var)
+                        )
 
                         # cutflow variable may have to be an exception
