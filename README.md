@@ -69,7 +69,12 @@ transfer coffea hists to hists in a root file
 law run 0b.GroupCoffeaProcesses --version test1 --local-scheduler
 ```
 
-Documentation links:
+helpful to kill local jobs still running somewhere
+```shell
+--cleanup-jobs
+```
+
+# Documentation links:
 
 Jagged arrays: https://github.com/scikit-hep/awkward-0.x/blob/master/docs/classes.adoc#methods
 
