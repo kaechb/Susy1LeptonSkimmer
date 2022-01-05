@@ -10,8 +10,10 @@ import luigi
 from tasks.basetasks import DatasetTask, HTCondorWorkflow
 from tasks.coffea import GroupCoffeaProcesses
 
+from utils.sandbox import CMSSWSandboxTask
 
-class DatacardProducer(DatasetTask):  # , CMSSWSandboxTask):
+
+class DatacardProducer(DatasetTask):  # , CMSSWSandboxTask
 
     "old example task to show datacard producing in task"
 
@@ -50,9 +52,16 @@ class DatacardProducer(DatasetTask):  # , CMSSWSandboxTask):
         # from CombineHarvester.CombineTools import ch
         import sys
 
-        sys.path.append(
-            "/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_2_13/src/CombineHarvester/CombineTools/python"
+        print(
+            "Importing from /nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_2_13/src/CombineHarvester/CombineTools/python3"
         )
+
+        sys.path.append(
+            "/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_2_13/src/CombineHarvester/CombineTools/python3"
+        )
+        from IPython import embed
+
+        embed()
         import ch
 
         from utils.datacard import DatacardWriter
@@ -62,8 +71,6 @@ class DatacardProducer(DatasetTask):  # , CMSSWSandboxTask):
         channel = self.signal_bin.split("_")[0]
 
         categories = self.make_pairs([self.config_inst.categories.names()])
-
-        from IPython import embed
 
         embed()
 

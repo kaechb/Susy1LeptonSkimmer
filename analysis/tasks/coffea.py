@@ -30,6 +30,8 @@ class CoffeaProcessor(
     this is a HTCOndor workflow, normally it will get submitted with configurations defined
     in the htcondor_bottstrap.sh or the basetasks.HTCondorWorkflow
     If you want to run this locally, just use --workflow local in the command line
+    Overall task to execute Coffea
+    Config and actua code is found in utils
     """
 
     def __init__(self, *args, **kwargs):

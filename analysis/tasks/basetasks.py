@@ -13,7 +13,20 @@ import order as od
 import importlib
 import math
 
+from utils.sandbox import CMSSWSandboxTask
+
+# define which implemented loaders we want to use
 law.contrib.load("numpy", "tasks", "root", "htcondor", "hdf5", "coffea")  # "wlcg",
+
+"""
+Collection of different standard task definition, each extending the dfinitions
+-Basetask defines basic functions
+-Campaign task adds the config instance needed everywhere, loads it from the respective config directory
+-Analysis task defines the namespace TODO: get it from $PATH
+-Config, Shift, Dataset task present in law example, not really needed rn
+-HTCondorwrokflow for task submission using HTCondorworkflow
+-CMSSW to set up a CMSSW environment
+"""
 
 
 class BaseTask(law.Task):
@@ -283,3 +296,52 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     # kwargs = law.util.merge_dicts(
     # self.htcondor_job_manager_defaults, kwargs)
     # return HTCondorJobManagerRWTH(**kwargs)
+
+
+class InstallCMSSWCode(CMSSWSandboxTask, law.tasks.RunOnceTask, DatasetTask):
+
+    clean = luigi.BoolParameter(
+        default=False, description="run 'scram b clean' before installing"
+    )
+    cores = luigi.IntParameter(
+        default=1, description="the number of cores for compilation"
+    )
+
+    # task_namespace = "{}".format(os.environ["DHA_ANALYSIS_ID"])
+
+    # version = None
+
+    @law.decorator.notify
+    def run(self):
+        import os
+        import shutil
+
+        # copy the current cmssw code to the CMSSW_BASE directory
+        CMSSW_BASE = "/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_2_13"
+        """
+        src = os.path.join(os.environ["DHA_BASE"], "cmssw", subsystem)
+        dst = os.path.join(os.environ["CMSSW_BASE"], "src", subsystem)
+        if os.path.exists(dst):
+                shutil.rmtree(dst)
+            shutil.copytree(src, dst)
+            self.publish_message("created package {}".format(dst))
+        """
+
+        # build the command
+        cmd = "scram b -j {}".format(self.cores)
+        if self.clean:
+            cmd = "scram b clean; {}".format(cmd)
+
+        # run the command
+        code = law.util.interruptable_popen(
+            cmd,
+            shell=True,
+            executable="/bin/bash",
+            # cwd=os.path.join(os.environ["CMSSW_BASE"], "src"),
+            cwd=os.path.join(CMSSW_BASE),
+        )[0]
+        if code != 0:
+            raise Exception("scram build failed")
+
+        # mark as complete
+        self.mark_complete()

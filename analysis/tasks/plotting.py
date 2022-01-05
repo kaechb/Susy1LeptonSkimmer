@@ -19,6 +19,11 @@ from tasks.coffea import CoffeaProcessor
 
 class PlotCoffeaHists(ConfigTask):
 
+    """
+    Plotting all Histograms produced by coffea
+    Utility for doing log scale, data comparison and only debug plotting
+    """
+
     log_scale = luigi.BoolParameter()
     unblinded = luigi.BoolParameter()
     scale_signal = luigi.IntParameter(default=1)
@@ -110,7 +115,7 @@ class PlotCoffeaHists(ConfigTask):
                         fig, ax = plt.subplots(figsize=(18, 10))
 
                     for proc in self.config_inst.processes:
-
+                        # unpack the different coffea hists and regroup them
                         if "data" in proc.name and self.unblinded:
                             child_hists = hists[
                                 [p[0].name for p in proc.walk_processes()], cat

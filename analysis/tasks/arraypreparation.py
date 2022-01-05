@@ -18,12 +18,19 @@ from tasks.coffea import CoffeaProcessor
 
 
 class ArrayNormalisation(ConfigTask):
+
+    """
+    Task to modify the Arrays produced by coffea
+    Current idea: normalise them to prepare for the DNN
+    """
+
     def requires(self):
         return {
             "debug": CoffeaProcessor.req(
                 self, processor="ArrayExporter", debug=True, workflow="local"
             ),
-            "complete": CoffeaProcessor.req(self, processor="ArrayExporter"),
+            # comment out following line if just interested in debug
+            # "complete": CoffeaProcessor.req(self, processor="ArrayExporter"),
         }
 
     def output(self):
@@ -50,7 +57,9 @@ class ArrayNormalisation(ConfigTask):
         # print(self.config_inst.variables.names(), ":")
         # print(array)
 
+        # load inputs from ArrayExporter
         target_dict = self.input()["complete"]["collection"].targets
+        debug_dict = self.input()["debug"]["collection"].targets
 
         # make regular dict out of ordered dict
         file_dict = {}

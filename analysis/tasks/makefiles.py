@@ -6,9 +6,13 @@ from tasks.basetasks import *
 import json
 
 """
-class DownloadFiles(ConfigTask):
-class DownloadFilesWrapper(CampaignTask, law.WrapperTask):
+Tasks to write config for datasets from target directory
+Then write a fileset directory as an input for coffea
 """
+
+
+# class DownloadFiles(ConfigTask):
+# class DownloadFilesWrapper(CampaignTask, law.WrapperTask):
 
 
 class WriteDatasets(AnalysisTask):
