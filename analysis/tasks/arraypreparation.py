@@ -46,8 +46,9 @@ class ArrayNormalisation(ConfigTask):
             if self.channel in cat and not "data" in proc
         }
         out.update(
-            {#"norm_values": self.local_target("norm_values.npy"),
-            "one_hot_labels": self.local_target("one_hot_labels.npy"),}
+            {  # "norm_values": self.local_target("norm_values.npy"),
+                "one_hot_labels": self.local_target("one_hot_labels.npy"),
+            }
         )
         return out
 
@@ -73,7 +74,9 @@ class ArrayNormalisation(ConfigTask):
         for i in target_dict.keys():
             file_dict.update(target_dict[i])
 
-        one_hot_scheme = [name for name in self.config_inst.processes.names() if "data" not in name]
+        one_hot_scheme = [
+            name for name in self.config_inst.processes.names() if "data" not in name
+        ]
 
         proc_dict = {}
         for cat in self.config_inst.categories.names():
@@ -99,15 +102,15 @@ class ArrayNormalisation(ConfigTask):
             array = np.vstack([array.load() for array in proc_dict[key]])
 
             print(key)
-            process = key.replace(self.channel+"_", "")
-            position=one_hot_scheme.index(process)
-            labels=np.zeros((len(one_hot_scheme),len(array)))
-            labels[position]=1
+            process = key.replace(self.channel + "_", "")
+            position = one_hot_scheme.index(process)
+            labels = np.zeros((len(one_hot_scheme), len(array)))
+            labels[position] = 1
 
             # this is sooo ugly, but unlike lists, appending numpy arrays requires a filling beforehand
-            if check_if==0:
+            if check_if == 0:
                 one_hot_labels = labels
-                check_if +=1
+                check_if += 1
 
             else:
                 one_hot_labels = np.append(one_hot_labels, labels, axis=1)
@@ -115,14 +118,14 @@ class ArrayNormalisation(ConfigTask):
             # change axis for normalisation, overwrite array to be memory friendly
             # save values for normalisation layer
             # I should not norm each process on their own I guess
-            #norm_values = []
-            #array = np.moveaxis(array, 1, 0)
-            #for i, arr in enumerate(array):
+            # norm_values = []
+            # array = np.moveaxis(array, 1, 0)
+            # for i, arr in enumerate(array):
             #    array[i], mean, std = self.normalise(arr)
             #    norm_values.append([mean, std])
 
             # roll axis back for dnn input
-            #array = np.moveaxis(array, 1, 0)
+            # array = np.moveaxis(array, 1, 0)
             # np.save(self.output().parent.path + "/normed_" + key, array)
 
             self.output()[key].dump(array)
@@ -130,8 +133,8 @@ class ArrayNormalisation(ConfigTask):
         # prepare one-hot encoded labels?
         categories = np.stack((np.ones(len(array)), np.zeros(len(array))))
 
-        #self.output()["norm_values"].dump(norm_values)
+        # self.output()["norm_values"].dump(norm_values)
         self.output()["one_hot_labels"].dump(one_hot_labels)
 
-        #from IPython import embed
-        #embed()
+        # from IPython import embed
+        # embed()

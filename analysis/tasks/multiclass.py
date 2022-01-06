@@ -1,5 +1,3 @@
-
-
 import law
 import numpy as np
 import pickle
@@ -20,12 +18,13 @@ DNN Stuff
 
 law.contrib.load("tensorflow")
 
-class DnnTrainer(ConfigTask):
+
+class DNNTrainer(ConfigTask):
 
     channel = luigi.Parameter(default="0b", description="channel to train on")
 
     def requires(self):
-        #return PrepareDnn.req(self)
+        # return PrepareDNN.req(self)
         return ArrayNormalisation.req(self, channel="N0b_CR")
 
     def output(self):
@@ -36,7 +35,7 @@ class DnnTrainer(ConfigTask):
 
     def store_parts(self):
         return (
-            super(DnnTrainer, self).store_parts()
+            super(DNNTrainer, self).store_parts()
             + (self.analysis_choice,)
             + (self.channel,)
         )
@@ -63,7 +62,9 @@ class DnnTrainer(ConfigTask):
 
         opt = keras.optimizers.Adam(learning_rate=0.01)
         model.compile(
-            loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"],
+            loss="categorical_crossentropy",
+            optimizer=opt,
+            metrics=["accuracy"],
         )
         return model
 
@@ -83,9 +84,9 @@ class DnnTrainer(ConfigTask):
     def run(self):
 
         # TENSORBOARD_PATH = (
-            # self.output()["saved_model"].dirname
-            # + "/logs/fit/"
-            # + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        # self.output()["saved_model"].dirname
+        # + "/logs/fit/"
+        # + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         # )
 
         # all_processes = self.config_inst.get_aux("process_groups")["default"]
@@ -96,7 +97,7 @@ class DnnTrainer(ConfigTask):
 
         # load data
         n_variables = len(self.config_inst.variables)
-        n_processes = len(self.config_inst.processes) -2 #substract data
+        n_processes = len(self.config_inst.processes) - 2  # substract data
 
         """
         train_data = np.load(self.input()[self.channel]["train"]["data"].path)
@@ -116,24 +117,21 @@ class DnnTrainer(ConfigTask):
         for key in self.input().keys():
             arr_list.append((self.input()[key].load()))
 
-        #dont concatenate, parallel to each other
-        arr_conc=np.concatenate(list(a for a in arr_list[:-1]))
+        # dont concatenate, parallel to each other
+        arr_conc = np.concatenate(list(a for a in arr_list[:-1]))
         labels = arr_list[-1]
 
-        labels = np.swapaxes(labels, 0,1)
+        labels = np.swapaxes(labels, 0, 1)
 
         # split up test set 95:5
-        Trainset, X_test, Trainlabel, y_test = skm.train_test_split(arr_conc,
-                                                            labels,
-                                                            test_size=0.95,
-                                                            random_state=42)
+        Trainset, X_test, Trainlabel, y_test = skm.train_test_split(
+            arr_conc, labels, test_size=0.95, random_state=42
+        )
 
         # train and validation set 80:20
-        X_train, X_val, y_train, y_val = skm.train_test_split(Trainset,
-                                                            Trainlabel,
-                                                            test_size=0.8,
-                                                            random_state=42)
-
+        X_train, X_val, y_train, y_val = skm.train_test_split(
+            Trainset, Trainlabel, test_size=0.8, random_state=42
+        )
 
         # configure the norm layer. Give it mu/sigma, layer is frozen
         # gamma, beta are for linear activations, so set them to unity transfo
@@ -153,11 +151,12 @@ class DnnTrainer(ConfigTask):
         keras.utils.plot_model(
             #    model, to_file=self.output()["saved_model"].path + "/dnn_graph.png"
             model,
-            to_file=self.output()["history_callback"].parent.path + "/dnn_wolbn_scheme.png",
+            to_file=self.output()["history_callback"].parent.path
+            + "/dnn_wolbn_scheme.png",
         )
 
         # tensorboard = keras.callbacks.TensorBoard(
-            # log_dir=TENSORBOARD_PATH, histogram_freq=0, write_graph=True
+        # log_dir=TENSORBOARD_PATH, histogram_freq=0, write_graph=True
         # )
         reduce_lr = keras.callbacks.ReduceLROnPlateau(
             monitor="val_loss", factor=0.2, patience=5, min_lr=0.001
@@ -166,7 +165,6 @@ class DnnTrainer(ConfigTask):
             monitor="val_accuracy", min_delta=0.0, patience=20  # for now
         )
 
-
         history_callback = model.fit(
             X_train,
             y_train,
@@ -174,7 +172,7 @@ class DnnTrainer(ConfigTask):
             batch_size=batch_size,
             epochs=max_epochs,
             verbose=2,
-            callbacks=[stop_of, reduce_lr] #tensorboard],
+            callbacks=[stop_of, reduce_lr]  # tensorboard],
             # class_weight=class_weight,
             # sample_weight=np.array(train_weights),
         )
@@ -186,14 +184,16 @@ class DnnTrainer(ConfigTask):
         # save callback for plotting
         with open(self.output()["history_callback"].path, "wb") as f:
             pickle.dump(history_callback.history, f)
-        #f = open(self.output()["history_callback"].path, "wb")
-        #pickle.dump(history_callback.history, f)
-        #f.close()
+        # f = open(self.output()["history_callback"].path, "wb")
+        # pickle.dump(history_callback.history, f)
+        # f.close()
 
         console = Console()
         # load test dta/labels and evaluate on unseen data
         test_loss, test_acc = model.evaluate(X_test, y_test)
-        console.print("\n[u][bold magenta]Test accuracy on channel {}:[/bold magenta][/u]".format(self.channel))
-        console.print( test_acc, "\n")
-
-
+        console.print(
+            "\n[u][bold magenta]Test accuracy on channel {}:[/bold magenta][/u]".format(
+                self.channel
+            )
+        )
+        console.print(test_acc, "\n")
