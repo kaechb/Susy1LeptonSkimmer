@@ -11,10 +11,16 @@ from matplotlib.backends.backend_pdf import PdfPages
 import mplhep as hep
 from tqdm.auto import tqdm
 import operator
+import pickle
+import tensorflow as tf
+from tensorflow import keras
+import sklearn as sk
 
 # other modules
 from tasks.basetasks import *
 from tasks.coffea import CoffeaProcessor
+from tasks.multiclass import DNNTrainer
+from tasks.arraypreparation import ArrayNormalisation
 
 
 class PlotCoffeaHists(ConfigTask):
@@ -284,3 +290,201 @@ class ArrayPlotting(ConfigTask):
         from IPython import embed
 
         embed()
+
+
+class DNNHistoryPlotting(AnalysisTask):
+
+    """
+    opening history callback and plotting curves for training
+    """
+
+    def requires(self):
+        return DNNTrainer.req(self)
+
+    def output(self):
+        return {
+            "loss_plot": self.local_target("loss_plot.png"),
+            "acc_plot": self.local_target("acc_plot.png"),
+        }
+
+    def store_parts(self):
+        return super(DNNHistoryPlotting, self).store_parts() + (self.analysis_choice,)
+
+    @law.decorator.timeit(publish_message=True)
+    @law.decorator.notify
+    @law.decorator.safe_output
+    def run(self):
+        # retrieve history callback for trainings history
+        with open(self.input()["history_callback"].path, "rb") as f:
+            history = pickle.load(f)
+
+        train_loss_history = history["loss"]
+        val_loss = history["val_loss"]
+
+        train_acc_history = history["accuracy"]
+        val_acc = history["val_accuracy"]
+
+        self.output()["loss_plot"].parent.touch()
+
+        plt.plot(
+            np.arange(1, len(val_loss) + 1, 1),
+            val_loss,
+            label="loss on valid data",
+            color="orange",
+        )
+        plt.plot(
+            np.arange(1, len(train_loss_history) + 1, 1),
+            train_loss_history,
+            label="loss on train data",
+            color="green",
+        )
+        plt.legend()
+        plt.xlabel("Epochs", fontsize=16)
+        plt.ylabel("Loss", fontsize=16)
+        plt.savefig(self.output()["loss_plot"].path)
+        plt.gcf().clear()
+
+        plt.plot(
+            np.arange(1, len(val_acc) + 1, 1),
+            val_acc,
+            label="acc on vali data",
+            color="orange",
+        )
+        plt.plot(
+            np.arange(1, len(train_acc_history) + 1, 1),
+            train_acc_history,
+            label="acc on train data",
+            color="green",
+        )
+        plt.legend()
+        plt.xlabel("Epochs", fontsize=16)
+        plt.ylabel("Accuracy", fontsize=16)
+        plt.savefig(self.output()["acc_plot"].path)
+        plt.gcf().clear()
+
+
+class DNNEvaluationPlotting(AnalysisTask):
+    normalize = luigi.Parameter(
+        default="true", description="if confusion matrix gets normalized"
+    )
+
+    def requires(self):
+        # return dict(data=ArrayNormalisation.req(self), model=DnnTrainer.req(self),)
+        return DNNTrainer.req(self)
+
+    def output(self):
+        return {
+            "ROC": self.local_target("ROC.png"),
+            "confusion_matrix": self.local_target("confusion_matrix.png"),
+        }
+
+    def store_parts(self):
+        return super(DNNEvaluationPlotting, self).store_parts() + (
+            self.analysis_choice,
+        )
+
+    @law.decorator.timeit(publish_message=True)
+    @law.decorator.notify
+    @law.decorator.safe_output
+    def run(self):
+
+        all_processes = [
+            proc for proc in self.config_inst.processes.names() if not "data" in proc
+        ]
+
+        n_variables = len(self.config_inst.variables)
+        n_processes = len(all_processes)  # substract data
+        print(n_processes)
+
+        # load complete model
+        reconstructed_model = keras.models.load_model(self.input()["saved_model"].path)
+
+        # load all the prepared data thingies
+        test_data = np.load(self.input()["test_data"].path)
+        test_labels = np.load(self.input()["test_labels"].path)
+
+        # test_loss, test_acc = reconstructed_model.evaluate(test_data, test_labels)
+        # print("Test accuracy:", test_acc)
+
+        test_predict = reconstructed_model.predict(test_data)
+
+        # "signal"...
+        predict_signal = reconstructed_model.predict(test_data)[:, 0]
+
+        self.output()["confusion_matrix"].parent.touch()
+
+        # Roc curve, compare labels and predicted labels
+        fpr, tpr, tresholds = sk.metrics.roc_curve(test_labels[:, 0], predict_signal)
+
+        plt.plot(
+            fpr,
+            tpr,
+            label="AUC: {0}".format(np.around(sk.metrics.auc(fpr, tpr), decimals=3)),
+        )
+        plt.plot([0, 1], [0, 1], ls="--")
+        plt.xlabel(" fpr ", fontsize=16)
+        plt.ylabel("tpr", fontsize=16)
+        plt.title("ROC", fontsize=16)
+        plt.legend()
+        plt.savefig(self.output()["ROC"].path)
+        plt.gcf().clear()
+
+        # Correlation Matrix Plot
+        # plot correlation matrix
+        pred_matrix = np.zeros((n_processes, n_processes))
+
+        """
+        predict_divided_data = []
+
+        for i in range(n_processes):
+            predict_divided_data.append(reconstructed_model.predict(divided_data[i]))
+
+        for i in range(n_processes):
+            for j in range(n_processes):
+                pred_matrix[i, j] = predict_divided_data[i][:, j].mean()
+
+        print(pred_matrix)
+        # TODO
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        cax = ax.matshow(pred_matrix, vmin=0, vmax=1)
+        for i in range(len(all_processes)):
+            for j in range(len(all_processes)):
+                c = np.round(pred_matrix[j, i], 3)
+                ax.text(i, j, str(c), va="center", ha="center")
+        """
+        pred_matrix = sk.metrics.confusion_matrix(
+            np.argmax(test_labels, axis=-1),
+            np.argmax(test_predict, axis=-1),
+            normalize=self.normalize,
+        )
+
+        print(pred_matrix)
+        # TODO
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        # cax = ax.matshow(pred_matrix, vmin=-1, vmax=1)
+        cax = ax.imshow(pred_matrix, vmin=0, vmax=1, cmap="plasma")
+        fig.colorbar(cax)
+        for i in range(len(all_processes)):
+            for j in range(len(all_processes)):
+                text = ax.text(
+                    j,
+                    i,
+                    np.round(pred_matrix[i, j], 3),
+                    ha="center",
+                    va="center",
+                    color="black",
+                )
+        ticks = np.arange(0, len(all_processes), 1)
+        # Let the horizontal axes labeling appear on bottom
+        ax.tick_params(top=False, bottom=True, labeltop=False, labelbottom=True)
+        ax.set_xticks(ticks)
+        ax.set_yticks(ticks)
+        ax.set_xticklabels(all_processes)
+        ax.set_yticklabels(all_processes)
+        ax.set_xlabel("Predicted Processes")
+        ax.set_ylabel("Real Processes")
+        # ax.grid(linestyle="--", alpha=0.5)
+        plt.savefig(self.output()["confusion_matrix"].path)
+        plt.gcf().clear()

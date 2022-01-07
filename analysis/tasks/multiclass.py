@@ -9,7 +9,7 @@ from tensorflow import keras
 import sklearn.model_selection as skm
 from rich.console import Console
 
-from tasks.basetasks import *
+from tasks.basetasks import ConfigTask, HTCondorWorkflow
 from tasks.arraypreparation import ArrayNormalisation
 
 """
@@ -19,9 +19,19 @@ DNN Stuff
 law.contrib.load("tensorflow")
 
 
-class DNNTrainer(ConfigTask):
+class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
 
     channel = luigi.Parameter(default="0b", description="channel to train on")
+    epochs = IntParameter(default=100)
+    batch_size = IntParameter(default=1000)
+    learning_rate = IntParameter(default=0.01)
+
+    def create_branch_map(self):
+        # overwrite branch map
+        n = 1
+        return list(range(n))
+
+        # return {i: i for i in range(n)}
 
     def requires(self):
         # return PrepareDNN.req(self)
@@ -31,6 +41,9 @@ class DNNTrainer(ConfigTask):
         return {
             "saved_model": self.local_target("saved_model"),
             "history_callback": self.local_target("history.pckl"),
+            # test data for plotting
+            "test_data": self.local_target("test_data.npy"),
+            "test_labels": self.local_target("test_labels.npy"),
         }
 
     def store_parts(self):
@@ -60,7 +73,7 @@ class DNNTrainer(ConfigTask):
             ]
         )
 
-        opt = keras.optimizers.Adam(learning_rate=0.01)
+        opt = keras.optimizers.Adam(learning_rate=self.learning_rate)
         model.compile(
             loss="categorical_crossentropy",
             optimizer=opt,
@@ -92,8 +105,8 @@ class DNNTrainer(ConfigTask):
         # all_processes = self.config_inst.get_aux("process_groups")["default"]
 
         # as luigi ints with default?
-        batch_size = 1000
-        max_epochs = 10
+        batch_size = self.batch_size
+        max_epochs = self.epochs
 
         # load data
         n_variables = len(self.config_inst.variables)
@@ -123,15 +136,17 @@ class DNNTrainer(ConfigTask):
 
         labels = np.swapaxes(labels, 0, 1)
 
-        # split up test set 95:5
+        # split up test set 95
         Trainset, X_test, Trainlabel, y_test = skm.train_test_split(
-            arr_conc, labels, test_size=0.95, random_state=42
+            arr_conc, labels, test_size=0.05, random_state=42
         )
 
         # train and validation set 80:20
         X_train, X_val, y_train, y_val = skm.train_test_split(
-            Trainset, Trainlabel, test_size=0.8, random_state=42
+            Trainset, Trainlabel, test_size=0.2, random_state=42
         )
+
+        # from IPython import embed;embed()
 
         # configure the norm layer. Give it mu/sigma, layer is frozen
         # gamma, beta are for linear activations, so set them to unity transfo
@@ -162,8 +177,19 @@ class DNNTrainer(ConfigTask):
             monitor="val_loss", factor=0.2, patience=5, min_lr=0.001
         )
         stop_of = keras.callbacks.EarlyStopping(
-            monitor="val_accuracy", min_delta=0.0, patience=20  # for now
+            monitor="accuracy",
+            verbose=1,  # val_accuracy
+            min_delta=0.0,
+            patience=20,
+            restore_best_weights=True,  # for now
         )
+
+        # calc class weights for training so all classes get some love
+        # scale up by abundance, additional factor to tone the values down a little
+        class_weights = {}
+        for i in range(n_processes):
+            class_weights.update({i: len(y_train) / (5 * np.sum(y_train[:, i]))})
+        print("class weights", class_weights)
 
         history_callback = model.fit(
             X_train,
@@ -172,8 +198,9 @@ class DNNTrainer(ConfigTask):
             batch_size=batch_size,
             epochs=max_epochs,
             verbose=2,
-            callbacks=[stop_of, reduce_lr]  # tensorboard],
-            # class_weight=class_weight,
+            callbacks=[stop_of, reduce_lr],  # tensorboard],
+            # catch uneven input distributions
+            class_weight=class_weights,
             # sample_weight=np.array(train_weights),
         )
 
@@ -184,9 +211,10 @@ class DNNTrainer(ConfigTask):
         # save callback for plotting
         with open(self.output()["history_callback"].path, "wb") as f:
             pickle.dump(history_callback.history, f)
-        # f = open(self.output()["history_callback"].path, "wb")
-        # pickle.dump(history_callback.history, f)
-        # f.close()
+
+        # test data
+        self.output()["test_data"].dump(X_test)
+        self.output()["test_labels"].dump(y_test)
 
         console = Console()
         # load test dta/labels and evaluate on unseen data
