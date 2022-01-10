@@ -17,7 +17,6 @@ from utils.sandbox import CMSSWSandboxTask
 
 # define which implemented loaders we want to use
 law.contrib.load("numpy", "tasks", "root", "htcondor", "hdf5", "coffea")  # "wlcg",
-
 """
 Collection of different standard task definition, each extending the dfinitions
 -Basetask defines basic functions
@@ -276,7 +275,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.custom_content.append(("universe", "vanilla"))
         # require more RAM on CPU
         # config.custom_content.append(("request_cpus", "1"))
-        config.custom_content.append(("request_memory", "10000"))
+        config.custom_content.append(("request_memory", "5000"))
         config.custom_content.append(("+RequestRuntime = 86400"))
         # config.custom_content.append(("Request_GPUs", "0"))
         # config.custom_content.append(("Request_GpuMemory", "0"))

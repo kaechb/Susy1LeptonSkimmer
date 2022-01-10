@@ -23,8 +23,9 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
 
     channel = luigi.Parameter(default="0b", description="channel to train on")
     epochs = IntParameter(default=100)
-    batch_size = IntParameter(default=1000)
-    learning_rate = IntParameter(default=0.01)
+    batch_size = IntParameter(default=10000)
+    learning_rate = FloatParameter(default=0.01)
+    debug = BoolParameter(default=False)
 
     def create_branch_map(self):
         # overwrite branch map
@@ -47,14 +48,20 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
         }
 
     def store_parts(self):
+        # debug_str = ''
+        if self.debug:
+            debug_str = "debug"
+        else:
+            debug_str = ""
+
         return (
             super(DNNTrainer, self).store_parts()
             + (self.analysis_choice,)
             + (self.channel,)
+            + (debug_str,)
         )
 
-    def build_model(self, n_variables, n_processes):
-
+    def build_model_sequential(self, n_variables, n_processes):
         # try selu or elu https://keras.io/api/layers/activations/?
         # simple sequential model to start
         model = keras.Sequential(
@@ -81,6 +88,28 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
         )
         return model
 
+    def build_model_functional(self, n_variables, n_processes, len_data):
+        inp = keras.Input((n_variables,))  # len_data
+        x = keras.layers.BatchNormalization(
+            axis=1, trainable=False, input_shape=(n_variables,)
+        )(inp)
+        x = keras.layers.Dense(256, activation=tf.nn.relu)(x)
+        x = keras.layers.Dropout(0.2)(x)
+        x = keras.layers.Dense(256, activation=tf.nn.relu)(x)
+        x = keras.layers.Dropout(0.2)(x)
+        x = keras.layers.Dense(256, activation=tf.nn.relu)(x)
+        x = keras.layers.Dropout(0.2)(x)
+        out = keras.layers.Dense(n_processes, activation=tf.nn.softmax)(x)
+        model = keras.models.Model(inputs=inp, outputs=out)
+
+        opt = keras.optimizers.Adam(learning_rate=self.learning_rate)
+        model.compile(
+            loss="categorical_crossentropy",
+            optimizer=opt,
+            metrics=["accuracy"],
+        )
+        return model
+
     def calc_norm_parameter(self, data):
 
         dat = np.swapaxes(data, 0, 1)
@@ -91,8 +120,24 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
 
         return np.array(means), np.array(stds)
 
+    def calc_class_weights(self, y_train, norm=1, sqrt=False):
+        # calc class weights to battle imbalance
+        # norm to tune down huge factors, sqrt to smooth the distribution
+        from sklearn.utils import class_weight
+
+        weight_array = norm * class_weight.compute_class_weight(
+            "balanced",
+            np.unique(np.argmax(y_train, axis=-1)),
+            np.argmax(y_train, axis=-1),
+        )
+
+        if sqrt:
+            # return dict(enumerate(np.sqrt(weight_array)))
+            return dict(enumerate((weight_array) ** 0.9))
+        if not sqrt:
+            return dict(enumerate(weight_array))
+
     @law.decorator.timeit(publish_message=True)
-    @law.decorator.notify
     @law.decorator.safe_output
     def run(self):
 
@@ -146,8 +191,6 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
             Trainset, Trainlabel, test_size=0.2, random_state=42
         )
 
-        # from IPython import embed;embed()
-
         # configure the norm layer. Give it mu/sigma, layer is frozen
         # gamma, beta are for linear activations, so set them to unity transfo
         means, stds = self.calc_norm_parameter(arr_conc)
@@ -156,20 +199,16 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
         beta = np.zeros((n_variables,))
 
         # initiliazemodel and set first layer
-        model = self.build_model(n_variables=n_variables, n_processes=n_processes)
-        model.layers[0].set_weights([gamma, beta, means, stds])
+        model = self.build_model_functional(
+            n_variables=n_variables, n_processes=n_processes, len_data=len(y_train)
+        )
+        # model_seq = self.build_model_sequential(n_variables=n_variables, n_processes=n_processes)
+        model.layers[1].set_weights([gamma, beta, means, stds])
 
         # display model summary
         model.summary()
-        # plot schematic model graph
 
-        keras.utils.plot_model(
-            #    model, to_file=self.output()["saved_model"].path + "/dnn_graph.png"
-            model,
-            to_file=self.output()["history_callback"].parent.path
-            + "/dnn_wolbn_scheme.png",
-        )
-
+        # define callbacks to be used during the training
         # tensorboard = keras.callbacks.TensorBoard(
         # log_dir=TENSORBOARD_PATH, histogram_freq=0, write_graph=True
         # )
@@ -177,8 +216,8 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
             monitor="val_loss", factor=0.2, patience=5, min_lr=0.001
         )
         stop_of = keras.callbacks.EarlyStopping(
-            monitor="accuracy",
-            verbose=1,  # val_accuracy
+            monitor="val_accuracy",  # accuracy
+            verbose=1,
             min_delta=0.0,
             patience=20,
             restore_best_weights=True,  # for now
@@ -186,10 +225,25 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
 
         # calc class weights for training so all classes get some love
         # scale up by abundance, additional factor to tone the values down a little
-        class_weights = {}
-        for i in range(n_processes):
-            class_weights.update({i: len(y_train) / (5 * np.sum(y_train[:, i]))})
+        class_weights = self.calc_class_weights(y_train, norm=1, sqrt=True)
+        # for i in range(n_processes):
+        #    class_weights.update({i: len(y_train) / (5 * np.sum(y_train[:, i]))})  # 5 *
         print("class weights", class_weights)
+
+        # check if everything looks fines, exit by crtl+D
+        if self.debug:
+            self.output()["history_callback"].parent.touch()
+            from IPython import embed
+
+            embed()
+
+        # plot schematic model graph
+        keras.utils.plot_model(
+            #    model, to_file=self.output()["saved_model"].path + "/dnn_graph.png"
+            model,
+            to_file=self.output()["history_callback"].parent.path
+            + "/dnn_wolbn_scheme.png",
+        )
 
         history_callback = model.fit(
             X_train,

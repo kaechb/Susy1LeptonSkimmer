@@ -315,7 +315,11 @@ class DNNHistoryPlotting(AnalysisTask):
     @law.decorator.safe_output
     def run(self):
         # retrieve history callback for trainings history
-        with open(self.input()["history_callback"].path, "rb") as f:
+        # from IPython import embed; embed()
+        # with open(self.input()["history_callback"].path, "rb") as f:
+        with open(
+            self.input()["collection"].targets[0]["history_callback"].path, "rb"
+        ) as f:
             history = pickle.load(f)
 
         train_loss_history = history["loss"]
@@ -397,11 +401,13 @@ class DNNEvaluationPlotting(AnalysisTask):
         print(n_processes)
 
         # load complete model
-        reconstructed_model = keras.models.load_model(self.input()["saved_model"].path)
+        reconstructed_model = keras.models.load_model(
+            self.input()["collection"].targets[0]["saved_model"].path
+        )
 
         # load all the prepared data thingies
-        test_data = np.load(self.input()["test_data"].path)
-        test_labels = np.load(self.input()["test_labels"].path)
+        test_data = np.load(self.input()["collection"].targets[0]["test_data"].path)
+        test_labels = np.load(self.input()["collection"].targets[0]["test_labels"].path)
 
         # test_loss, test_acc = reconstructed_model.evaluate(test_data, test_labels)
         # print("Test accuracy:", test_acc)
@@ -431,28 +437,6 @@ class DNNEvaluationPlotting(AnalysisTask):
 
         # Correlation Matrix Plot
         # plot correlation matrix
-        pred_matrix = np.zeros((n_processes, n_processes))
-
-        """
-        predict_divided_data = []
-
-        for i in range(n_processes):
-            predict_divided_data.append(reconstructed_model.predict(divided_data[i]))
-
-        for i in range(n_processes):
-            for j in range(n_processes):
-                pred_matrix[i, j] = predict_divided_data[i][:, j].mean()
-
-        print(pred_matrix)
-        # TODO
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        cax = ax.matshow(pred_matrix, vmin=0, vmax=1)
-        for i in range(len(all_processes)):
-            for j in range(len(all_processes)):
-                c = np.round(pred_matrix[j, i], 3)
-                ax.text(i, j, str(c), va="center", ha="center")
-        """
         pred_matrix = sk.metrics.confusion_matrix(
             np.argmax(test_labels, axis=-1),
             np.argmax(test_predict, axis=-1),
