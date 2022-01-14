@@ -24,6 +24,9 @@ law index
 ```
 law index collect all tasks, needed for new tasks
 
+By default, this example uses a local scheduler, which - by definition - offers no visualization tools in the browser. If you want to see how the task tree is built and subsequently run, run luigid in a second terminal. This will start a central scheduler at localhost:8082 (the default address). To inform tasks (or rather workers) about the scheduler, either add --local-scheduler False to the law run command, or set the local-scheduler value in the [luigi_core] config section in the law.cfg file to False.
+
+
 # Current analysis tasks
 
 If you want to add datasets, add the corresponding processes, then map them.
