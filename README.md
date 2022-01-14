@@ -102,4 +102,4 @@ law: https://github.com/riga/law
 
 order: https://github.com/riga/order
 
-Previous work: https://git.rwth-aachen.de/3pia/cms_analyses/common/-/tree/mva_prep
+Previous work (and some recycled code snippets): https://git.rwth-aachen.de/3pia/cms_analyses/common/-/tree/mva_prep
