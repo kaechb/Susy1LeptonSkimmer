@@ -72,6 +72,19 @@ transfer coffea hists to hists in a root file
 law run 0b.GroupCoffeaProcesses --version test1 --local-scheduler
 ```
 
+Modify produced numpy arrays, e.g. for DNN
+```shell
+law run 0b.ArrayNormalisation --version testDNN --local-scheduler
+```
+
+Use the numpy arrays to train a deep neural network, currently fully connected feed forward
+Keywords include options for layers, nodes, dropout, epochs and more (look in basetasks.DNNTask)
+```shell
+law run 0b.DNNTrainer --version test1 --local-scheduler --workflow local --dropout 0.2 --n-nodes 128 --n-layers 3 --epochs 100 
+```
+
+
+
 helpful to kill local jobs still running somewhere
 ```shell
 --cleanup-jobs
