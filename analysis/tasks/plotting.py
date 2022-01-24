@@ -17,7 +17,7 @@ from tensorflow import keras
 import sklearn as sk
 
 # other modules
-from tasks.basetasks import *
+from tasks.basetasks import ConfigTask, DNNTask
 from tasks.coffea import CoffeaProcessor
 from tasks.multiclass import DNNTrainer
 from tasks.arraypreparation import ArrayNormalisation
@@ -272,27 +272,24 @@ class PlotCoffeaHists(ConfigTask):
 
 class ArrayPlotting(ConfigTask):
     def requires(self):
-        return CoffeaProcessor.req(
-            self, processor="ArrayExporter", debug=True, workflow="local"
-        )
+        return CoffeaProcessor.req(self, processor="ArrayExporter")
 
     def output(self):
-        return self.local_target("hists")
+        return self.local_target("hists.pdf")
 
     def run(self):
 
-        # inp = self.input()["collection"][0].load()
-        array = self.input()["collection"].targets[0]["N0b_TTZ_qq"].load()
+        inp = self.input()
+        # array = self.input()["collection"].targets[0]["N0b_TTZ_qq"].load()
         # path=self.input()["collection"].targets[0].path
 
         print(self.config_inst.variables.names(), ":")
-        print(array)
         from IPython import embed
 
         embed()
 
 
-class DNNHistoryPlotting(AnalysisTask):
+class DNNHistoryPlotting(DNNTask):
 
     """
     opening history callback and plotting curves for training
@@ -308,7 +305,16 @@ class DNNHistoryPlotting(AnalysisTask):
         }
 
     def store_parts(self):
-        return super(DNNHistoryPlotting, self).store_parts() + (self.analysis_choice,)
+        # make plots for each use case
+        return (
+            super(DNNHistoryPlotting, self).store_parts()
+            + (self.analysis_choice,)
+            + (self.channel,)
+            + (self.n_layers,)
+            + (self.n_nodes,)
+            + (self.dropout,)
+            + (self.batch_size,)
+        )
 
     @law.decorator.timeit(publish_message=True)
     @law.decorator.notify
@@ -367,14 +373,16 @@ class DNNHistoryPlotting(AnalysisTask):
         plt.gcf().clear()
 
 
-class DNNEvaluationPlotting(AnalysisTask):
+class DNNEvaluationPlotting(DNNTask):
     normalize = luigi.Parameter(
         default="true", description="if confusion matrix gets normalized"
     )
 
     def requires(self):
         # return dict(data=ArrayNormalisation.req(self), model=DnnTrainer.req(self),)
-        return DNNTrainer.req(self)
+        return DNNTrainer.req(
+            self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout
+        )
 
     def output(self):
         return {
@@ -383,8 +391,15 @@ class DNNEvaluationPlotting(AnalysisTask):
         }
 
     def store_parts(self):
-        return super(DNNEvaluationPlotting, self).store_parts() + (
-            self.analysis_choice,
+        # make plots for each use case
+        return (
+            super(DNNEvaluationPlotting, self).store_parts()
+            + (self.analysis_choice,)
+            + (self.channel,)
+            + (self.n_layers,)
+            + (self.n_nodes,)
+            + (self.dropout,)
+            + (self.batch_size,)
         )
 
     @law.decorator.timeit(publish_message=True)
@@ -397,7 +412,7 @@ class DNNEvaluationPlotting(AnalysisTask):
         ]
 
         n_variables = len(self.config_inst.variables)
-        n_processes = len(all_processes)  # substract data
+        n_processes = len(all_processes) - 1  # substract QCD FIXME
         print(n_processes)
 
         # load complete model
@@ -450,8 +465,8 @@ class DNNEvaluationPlotting(AnalysisTask):
         # cax = ax.matshow(pred_matrix, vmin=-1, vmax=1)
         cax = ax.imshow(pred_matrix, vmin=0, vmax=1, cmap="plasma")
         fig.colorbar(cax)
-        for i in range(len(all_processes)):
-            for j in range(len(all_processes)):
+        for i in range(n_processes):
+            for j in range(n_processes):
                 text = ax.text(
                     j,
                     i,

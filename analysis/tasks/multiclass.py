@@ -6,10 +6,11 @@ from luigi import BoolParameter, IntParameter, FloatParameter, ChoiceParameter
 from law.target.collection import TargetCollection
 import tensorflow as tf
 from tensorflow import keras
+import sklearn as sk
 import sklearn.model_selection as skm
 from rich.console import Console
 
-from tasks.basetasks import ConfigTask, HTCondorWorkflow
+from tasks.basetasks import DNNTask, HTCondorWorkflow
 from tasks.arraypreparation import ArrayNormalisation
 
 """
@@ -19,16 +20,9 @@ DNN Stuff
 law.contrib.load("tensorflow")
 
 
-class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
+class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
 
-    channel = luigi.Parameter(default="0b", description="channel to train on")
-    epochs = IntParameter(default=100)
-    batch_size = IntParameter(default=10000)
-    learning_rate = FloatParameter(default=0.01)
-    debug = BoolParameter(default=False)
-    n_layers = IntParameter(default=3)
-    n_nodes = IntParameter(default=256)
-    dropout = FloatParameter(default=0.2)
+    use_sqrt = BoolParameter(default=False)
     norm_class_weights = FloatParameter(default=1)
     job_number = IntParameter(
         default=1, description="how many HTCondo jobs are started"
@@ -105,18 +99,18 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
     def build_model_functional(
         self, n_variables, n_processes, n_layers=3, n_nodes=256, dropout=0.2
     ):
+        # build a fully conncected DNN from defined paramters
+
         inp = keras.Input((n_variables,))
         x = keras.layers.BatchNormalization(
             axis=1, trainable=False, input_shape=(n_variables,)
         )(inp)
 
         for i in range(n_layers):
-            x = keras.layers.Dense(n_nodes, activation=tf.nn.relu)(x)
+            x = keras.layers.Dense(
+                n_nodes, activation=tf.nn.relu, kernel_regularizer="l2"
+            )(x)
             x = keras.layers.Dropout(dropout)(x)
-        # x = keras.layers.Dense(256, activation=tf.nn.relu)(x)
-        # x = keras.layers.Dropout(0.2)(x)
-        # x = keras.layers.Dense(256, activation=tf.nn.relu)(x)
-        # x = keras.layers.Dropout(0.2)(x)
 
         out = keras.layers.Dense(n_processes, activation=tf.nn.softmax)(x)
         model = keras.models.Model(inputs=inp, outputs=out)
@@ -130,6 +124,7 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
         return model
 
     def calc_norm_parameter(self, data):
+        # return values to shift distribution to normal
 
         dat = np.swapaxes(data, 0, 1)
         means, stds = [], []
@@ -151,12 +146,82 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
         )
 
         if sqrt:
+            # smooth by exponential function
             # return dict(enumerate(np.sqrt(weight_array)))
-            return dict(enumerate((weight_array) ** 0.9))
+            return dict(enumerate((weight_array) ** 0.88))
         if not sqrt:
             # set at minimum to 1.0
             # return dict(enumerate([a if a>1.0 else 1.0 for a in weight_array]))
             return dict(enumerate(weight_array))
+
+    def data_generator(self, X_train, y_train, batch_size, n_processes):
+
+        while True:
+
+            arrays, one_hot_labels = [], []
+            individual_batch_size = batch_size // n_processes
+
+            for i in range(n_processes):
+                arr = X_train[y_train[:, i] == 1]
+                choice = np.random.choice(
+                    np.arange(0, len(arr), 1), size=individual_batch_size, replace=False
+                )
+                arrays.append(arr[choice])
+                labels = np.zeros((individual_batch_size, n_processes))
+                labels[:, i] = 1
+                one_hot_labels.append(labels)
+
+            """
+            try:
+                count_events
+            except NameError:
+                count_events = 0
+            else:
+                count_events += individual_batch_size
+
+            if count_events > np.sum(y_train[:, 4] == 1):
+                # print("epoch done with {} entries".format(count_events))
+                count_events = 0
+
+            if self.debug:
+                from IPython import embed;embed()
+            """
+
+            yield np.concatenate(arrays), np.concatenate(one_hot_labels)
+            # print("yielded!")
+
+    """
+    def data_generator(self, training_input, training_labels, individual_batch_size, n_processes):
+
+        #import sk.preprocessing.OneHotEncoder
+        arrays,one_hot_labels = [], []
+
+        #for i, arr in enumerate(training_input):
+
+        for i in range(n_processes):
+            arr=training_input[training_labels[:,i]==1]
+            choice=np.random.choice(np.arange(0,len(arr),1), size=individual_batch_size , replace=False)
+            arrays.append(arr[choice])
+            labels = np.zeros((individual_batch_size, n_processes))
+            labels[:,i] = 1
+            one_hot_labels.append(labels)
+
+        yield (np.concatenate(arrays), np.concatenate(one_hot_labels))
+
+
+    something like
+    ds_counter = tf.data.Dataset.from_generator(count, args=[25], output_types=tf.int32, output_shapes = (), )
+    def gen_series():
+      i = 0
+      while True:
+        size = np.random.randint(0, 10)
+        yield i, np.random.normal(size=(size,))
+        i += 1
+    ds_series = tf.data.Dataset.from_generator(
+        gen_series,
+        output_types=(tf.int32, tf.float32),
+        output_shapes=((), (None,)))
+    """
 
     @law.decorator.timeit(publish_message=True)
     @law.decorator.safe_output
@@ -170,13 +235,11 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
 
         # all_processes = self.config_inst.get_aux("process_groups")["default"]
 
-        # as luigi ints with default?
-        batch_size = self.batch_size
-        max_epochs = self.epochs
-
         # load data
         n_variables = len(self.config_inst.variables)
-        n_processes = len(self.config_inst.processes) - 2  # substract data
+        n_processes = (
+            len(self.config_inst.processes) - 3
+        )  # substract data, substracted FIXME
 
         """
         train_data = np.load(self.input()[self.channel]["train"]["data"].path)
@@ -202,14 +265,18 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
 
         labels = np.swapaxes(labels, 0, 1)
 
+        # move QCD into rare, importan, n_processes is wrong now!
+        labels[labels[:, 1] == 1] = [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        labels = np.delete(labels, 1, 1)
+
         # split up test set 95
         Trainset, X_test, Trainlabel, y_test = skm.train_test_split(
             arr_conc, labels, test_size=0.05, random_state=42
         )
 
-        # train and validation set 80:20
+        # train and validation set 80:20 FIXME
         X_train, X_val, y_train, y_val = skm.train_test_split(
-            Trainset, Trainlabel, test_size=0.2, random_state=42
+            Trainset, Trainlabel, test_size=0.2, random_state=24
         )
 
         # configure the norm layer. Give it mu/sigma, layer is frozen
@@ -238,10 +305,10 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
         # log_dir=TENSORBOARD_PATH, histogram_freq=0, write_graph=True
         # )
         reduce_lr = keras.callbacks.ReduceLROnPlateau(
-            monitor="val_loss", factor=0.2, patience=10, min_lr=0.001
+            monitor="val_loss", factor=0.2, patience=20, min_lr=0.001
         )
         stop_of = keras.callbacks.EarlyStopping(
-            monitor="accuracy",  # val_accuracy
+            monitor="val_accuracy",  # accuracy
             verbose=1,
             min_delta=0.0,
             patience=20,
@@ -251,13 +318,15 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
         # calc class weights for training so all classes get some love
         # scale up by abundance, additional factor to tone the values down a little
         class_weights = self.calc_class_weights(
-            y_train, norm=self.norm_class_weights, sqrt=False
+            y_train, norm=self.norm_class_weights, sqrt=self.use_sqrt
         )
-        print("\nclass weights", class_weights)
+        print("\nclass weights", class_weights, "\n")
+
+        # generator = self.data_generator(X_train, y_train, int(self.batch_size/n_processes), n_processes)
+        # print(generator)
 
         # check if everything looks fines, exit by crtl+D
         if self.debug:
-            self.output()["history_callback"].parent.touch()
             from IPython import embed
 
             embed()
@@ -271,17 +340,28 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
         )
 
         history_callback = model.fit(
+            self.data_generator(X_train, y_train, self.batch_size, n_processes),
+            validation_data=(X_val, y_val),
+            epochs=self.epochs,
+            verbose=2,
+            steps_per_epoch=50,  # len(X_train) // self.batch_size,
+            callbacks=[stop_of, reduce_lr],  # tensorboard],
+        )
+
+        """
+        history_callback = model.fit(
             X_train,
             y_train,
             validation_data=(X_val, y_val),
             batch_size=batch_size,
             epochs=max_epochs,
             verbose=2,
-            callbacks=[stop_of, reduce_lr],  # tensorboard],
+            callbacks=[stop_of],# , reduce_lr],  # tensorboard],
             # catch uneven input distributions
             class_weight=class_weights,
             # sample_weight=np.array(train_weights),
         )
+        """
 
         # save model
         self.output()["saved_model"].parent.touch()
@@ -307,7 +387,9 @@ class DNNTrainer(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
         self.output()["test_acc"].dump({"test_acc": test_acc})
 
 
-class DNNHyperParameterOpt(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
+class DNNHyperParameterOpt(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
+    x = 1
+
     def create_branch_map(self):
         # overwrite branch map
         n = 1
@@ -338,6 +420,11 @@ class DNNHyperParameterOpt(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
 
     def output(self):
         return self.local_target("performance.json")
+        # return self.local_target("x_{}_{}.json".format(self.iteration, self.branch))
+
+        """
+        idea akin to example, iterate trough branches and call for each configuration the DNN Trainer, then somehow evaluate
+        """
 
     def store_parts(self):
 
@@ -346,7 +433,9 @@ class DNNHyperParameterOpt(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
     def run(self):
         from IPython import embed
 
-        # embed()
+        embed()
+
+        # output = yield Objective.req(self, x=x, iteration=self.branch, branch=-1)
 
         performance = {}
 
@@ -356,3 +445,29 @@ class DNNHyperParameterOpt(ConfigTask, HTCondorWorkflow, law.LocalWorkflow):
             performance.update({key: test_acc})
 
         self.output().dump(performance)
+
+
+class PrintOptDNNConfig(DNNTask):
+    def requires(self):
+        return DNNHyperParameterOpt.req(self)
+
+    def output(self):
+        return self.local_target("config.json")
+
+    def store_parts(self):
+        return super(PrintOptDNNConfig, self).store_parts() + (self.analysis_choice,)
+
+    def run(self):
+        # from IPython import embed; embed()
+
+        performance = self.input()["collection"].targets[0].load()
+        best_key = max(performance, key=performance.get)
+
+        parameters = ["layers", "nodes", "dropout"]
+
+        console = Console()
+        console.print("\n[u][bold magenta]Best parameters are:[/bold magenta][/u]")
+        for i, para in enumerate(parameters):
+            print(para, best_key.split("_")[i])
+
+        # print("best performance with layers:{layers} nodes:{nodes} dropout:{dropout}".format())

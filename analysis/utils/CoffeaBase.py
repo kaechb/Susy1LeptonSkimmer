@@ -152,6 +152,9 @@ class BaseSelection:
         # leptons variables
         n_leptons = events.nLepton
         lead_lep_pt = events.LeptonPt[:, 0]
+        lead_lep_eta = events.LeptonEta[:, 0]
+        lead_lep_phi = events.LeptonPhi[:, 0]
+        # LeptonMass
         # tight_lep = events.LeptonTightId[:, 0]
         lep_charge = events.LeptonCharge
         lep_pdgid = events.LeptonPdgId
@@ -183,6 +186,10 @@ class BaseSelection:
         mu1, mu2 = ak.unzip(ak.combinations(array.muons, 2))
         """
 
+        # from IPython import embed;embed()
+        # APPLY TRIGGER!!! done before in c++?
+        # mu_trigger = events.HLT_IsoMu24
+
         # muon selection
         muon_selection = events.LeptonMediumId[:, 0] & (abs(lep_pdgid[:, 0]) == 13)
         # ele selection
@@ -198,8 +205,13 @@ class BaseSelection:
 
         # jet variables
         n_jets = events.nJet
-        n_btags = events.nMediumDFBTagJet
+        n_btags = events.nMediumDFBTagJet  # 'nMediumCSVBTagJet' ?
         jet_mass_1 = events.JetMass[:, 0]
+        jet_pt_1 = events.JetPt[:, 0]
+        # unpack nested list, set not existing second jets to 0 -> depends on other cuts
+        jet_pt_2 = ak.fill_none(ak.firsts(events.JetPt[:, 1:2]), value=0)
+        jet_eta_1 = events.JetEta[:, 0]
+        jet_phi_1 = events.JetPhi[:, 0]
 
         # jest isolation selection
         jet_iso_sel = (
@@ -250,14 +262,12 @@ class BaseSelection:
         HLTElectronOr = events.HLTElectronOr
         HLTMuonOr = events.HLTMuonOr
 
+        # from IPython import embed;embed()
+
         self.add_to_selection(selection, "HLTElectronOr", events.HLTElectronOr)
         self.add_to_selection(selection, "HLTLeptonOr", events.HLTLeptonOr)
         self.add_to_selection(selection, "HLTMETOr", events.HLTMETOr)
         self.add_to_selection(selection, "HLTMuonOr", events.HLTMuonOr)
-
-        from IPython import embed
-
-        embed()
 
         # apply some weights,  MC/data check beforehand
         if not process.is_data:
@@ -451,6 +461,7 @@ class Histogramer(BaseProcessor, BaseSelection):
                 # from IPython import embed;embed()
 
                 # mask = ak.to_numpy(mask).mask
+                # print(var_name)
                 values = {}
                 values["dataset"] = out["dataset"]
                 values["category"] = cat

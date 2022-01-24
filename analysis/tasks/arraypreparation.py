@@ -108,6 +108,7 @@ class ArrayNormalisation(ConfigTask):
             labels[position] = 1
 
             # this is sooo ugly, but unlike lists, appending numpy arrays requires a filling beforehand
+            # otherwise try except else
             if check_if == 0:
                 one_hot_labels = labels
                 check_if += 1

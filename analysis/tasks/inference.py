@@ -141,3 +141,28 @@ class DatacardProducer(DatasetTask):  # , CMSSWSandboxTask
             self.output()["datacard"].path
         )
         law.util.interruptable_popen(command, shell=True, executable="/bin/bash")
+
+
+"""
+
+calling from command line like this?
+
+class FitDiagnostics(DHITask, DatacardProducer):
+    def requires(self):
+        return DatacardProducer.req(self, transfer=True)
+
+    outmap = {"fitdiagnostics.root": "*/fitdiagnostics__*.root"}
+
+    def command(self):
+        return [
+            "FitDiagnostics",
+            "--version",
+            self.version,
+            "--datacards",
+            self.remote_path(self.input()["datacard_eos"]),
+            "--skip-save",
+            "Toys",
+            "--custom-args",
+            "--ignoreCovWarning --skipSBFit",
+        ]
+"""

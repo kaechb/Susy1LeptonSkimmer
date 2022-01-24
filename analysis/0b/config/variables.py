@@ -52,14 +52,32 @@ def setup_variables(cfg):
         x_title="Number of Jets",
     )
 
+    # lepton stuff ###############
     cfg.add_variable(
         name="lead_lep_pt",
         expression="lead_lep_pt",
         binning=(100, 0, 1000),
-        # unit="",
+        unit="GeV",
         x_title=r"$p_{T}^{lep1}$",
     )
 
+    cfg.add_variable(
+        name="lead_lep_eta",
+        expression="lead_lep_eta",
+        binning=(20, 0, 5),
+        unit="GeV",
+        x_title=r"$\eta^{lep1}$",
+    )
+
+    cfg.add_variable(
+        name="lead_lep_phi",
+        expression="lead_lep_phi",
+        binning=(63, -3.15, 3.15),
+        unit="GeV",
+        x_title=r"$\Phi^{lep1}$",
+    )
+
+    # jet stuff ##################
     cfg.add_variable(
         name="jet_mass_1",
         expression="jet_mass_1",
@@ -67,6 +85,39 @@ def setup_variables(cfg):
         unit="GeV",
         x_title=r"$m_{Jet}^{1}$",
     )
+
+    cfg.add_variable(
+        name="jet_pt_1",
+        expression="jet_pt_1",
+        binning=(100, 0.0, 1000.0),
+        unit="GeV",
+        x_title=r"$p_{T}^{Jet1}$",
+    )
+
+    cfg.add_variable(
+        name="jet_pt_2",
+        expression="jet_pt_2",
+        binning=(100, 0.0, 1000.0),
+        unit="GeV",
+        x_title=r"$p_{T}^{Jet2}$",
+    )
+
+    cfg.add_variable(
+        name="jet_eta_1",
+        expression="jet_eta_1",
+        binning=(20, 0.0, 5.0),
+        unit="GeV",
+        x_title=r"$\eta_{Jet}^{1}$",
+    )
+
+    cfg.add_variable(
+        name="jet_phi_1",
+        expression="jet_phi_1",
+        binning=(63, -3.15, 3.15),
+        unit="GeV",
+        x_title=r"$\Phi_{Jet}^{1}$",
+    )
+    #########################
 
     cfg.add_variable(
         name="Dphi",

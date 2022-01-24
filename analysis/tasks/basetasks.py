@@ -16,7 +16,9 @@ import math
 from utils.sandbox import CMSSWSandboxTask
 
 # define which implemented loaders we want to use
-law.contrib.load("numpy", "tasks", "root", "htcondor", "hdf5", "coffea")  # "wlcg",
+law.contrib.load(
+    "numpy", "tasks", "root", "htcondor", "hdf5", "coffea", "matplotlib"
+)  # "wlcg",
 """
 Collection of different standard task definition, each extending the dfinitions
 -Basetask defines basic functions
@@ -115,6 +117,24 @@ class ConfigTask(AnalysisTask):
         if self.version is not None:
             parts += (self.version,)
         return parts
+
+
+class DNNTask(ConfigTask):
+    """
+    define parameters here for all relevant tasks
+    """
+
+    channel = luigi.Parameter(default="0b", description="channel to train on")
+    epochs = luigi.IntParameter(default=100)
+    batch_size = luigi.IntParameter(default=10000)
+    learning_rate = luigi.FloatParameter(default=0.01)
+    debug = luigi.BoolParameter(default=False)
+    n_layers = luigi.IntParameter(default=3)
+    n_nodes = luigi.IntParameter(default=256)
+    dropout = luigi.FloatParameter(default=0.2)
+
+    def __init__(self, *args, **kwargs):
+        super(DNNTask, self).__init__(*args, **kwargs)
 
 
 class ShiftTask(ConfigTask):
@@ -275,7 +295,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.custom_content.append(("universe", "vanilla"))
         # require more RAM on CPU
         # config.custom_content.append(("request_cpus", "1"))
-        config.custom_content.append(("request_memory", "5000"))
+        config.custom_content.append(("request_memory", "15000"))
         config.custom_content.append(("+RequestRuntime = 86400"))
         # config.custom_content.append(("Request_GPUs", "0"))
         # config.custom_content.append(("Request_GpuMemory", "0"))
