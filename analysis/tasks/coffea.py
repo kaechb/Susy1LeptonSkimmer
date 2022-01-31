@@ -44,6 +44,9 @@ class CoffeaProcessor(
     # return {corr: target.load() for corr, target in
     # self.input()["corrections"].items()}
 
+    def create_branch_map(self):
+        return list(range(10))
+
     def output(self):
         datasets = self.config_inst.datasets.names()
         if self.debug:
@@ -91,7 +94,9 @@ class CoffeaProcessor(
         tic = time.time()
 
         if self.debug:
-            # from IPython import embed;embed()
+            from IPython import embed
+
+            embed()
             fileset = {self.debug_dataset: [fileset[self.debug_dataset][0]]}
 
         # , metrics

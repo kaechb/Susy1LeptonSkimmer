@@ -27,11 +27,11 @@ Just import everything and try out stuff
 """
 
 
-class TestDummy(DatasetTask, law.LocalWorkflow, HTCondorWorkflow):  # AnalysisTask):
+class TestDummy(DatasetTask, HTCondorWorkflow, law.LocalWorkflow):  # AnalysisTask):
     debug = BoolParameter(default=True)
-    random_number = IntParameter(default=1)
-    x = luigi.ListParameter()
-    iteration = luigi.IntParameter()
+    random_number = IntParameter(default=42)
+    x = luigi.ListParameter(default=[1])
+    iteration = luigi.IntParameter(default=1)
 
     def create_branch_map(self):
         return {i: x for i, x in enumerate(self.x)}

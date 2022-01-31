@@ -379,10 +379,15 @@ class DNNEvaluationPlotting(DNNTask):
     )
 
     def requires(self):
-        # return dict(data=ArrayNormalisation.req(self), model=DnnTrainer.req(self),)
-        return DNNTrainer.req(
-            self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout
+        return dict(
+            data=ArrayNormalisation.req(self),
+            model=DNNTrainer.req(
+                self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout
+            ),
         )
+        # return DNNTrainer.req(
+        #    self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout
+        # )
 
     def output(self):
         return {
@@ -407,35 +412,33 @@ class DNNEvaluationPlotting(DNNTask):
     @law.decorator.safe_output
     def run(self):
 
-        all_processes = [
-            proc for proc in self.config_inst.processes.names() if not "data" in proc
-        ]
+        # from IPython import embed;embed()
 
         n_variables = len(self.config_inst.variables)
-        n_processes = len(all_processes) - 1  # substract QCD FIXME
-        print(n_processes)
+        n_processes = len(self.config_inst.get_aux("DNN_process_template").keys())
+        all_processes = list(self.config_inst.get_aux("DNN_process_template").keys())
 
         # load complete model
         reconstructed_model = keras.models.load_model(
-            self.input()["collection"].targets[0]["saved_model"].path
+            self.input()["model"]["collection"].targets[0]["saved_model"].path
         )
 
         # load all the prepared data thingies
-        test_data = np.load(self.input()["collection"].targets[0]["test_data"].path)
-        test_labels = np.load(self.input()["collection"].targets[0]["test_labels"].path)
+        X_test = self.input()["data"]["X_test"].load()
+        y_test = self.input()["data"]["y_test"].load()
 
-        # test_loss, test_acc = reconstructed_model.evaluate(test_data, test_labels)
+        # test_loss, test_acc = reconstructed_model.evaluate(X_test, y_test)
         # print("Test accuracy:", test_acc)
 
-        test_predict = reconstructed_model.predict(test_data)
+        test_predict = reconstructed_model.predict(X_test)
 
         # "signal"...
-        predict_signal = reconstructed_model.predict(test_data)[:, 0]
+        predict_signal = reconstructed_model.predict(X_test)[:, 0]
 
         self.output()["confusion_matrix"].parent.touch()
 
         # Roc curve, compare labels and predicted labels
-        fpr, tpr, tresholds = sk.metrics.roc_curve(test_labels[:, 0], predict_signal)
+        fpr, tpr, tresholds = sk.metrics.roc_curve(y_test[:, 0], predict_signal)
 
         plt.plot(
             fpr,
@@ -453,7 +456,7 @@ class DNNEvaluationPlotting(DNNTask):
         # Correlation Matrix Plot
         # plot correlation matrix
         pred_matrix = sk.metrics.confusion_matrix(
-            np.argmax(test_labels, axis=-1),
+            np.argmax(y_test, axis=-1),
             np.argmax(test_predict, axis=-1),
             normalize=self.normalize,
         )
@@ -475,7 +478,7 @@ class DNNEvaluationPlotting(DNNTask):
                     va="center",
                     color="black",
                 )
-        ticks = np.arange(0, len(all_processes), 1)
+        ticks = np.arange(0, n_processes, 1)
         # Let the horizontal axes labeling appear on bottom
         ax.tick_params(top=False, bottom=True, labeltop=False, labelbottom=True)
         ax.set_xticks(ticks)
@@ -487,3 +490,129 @@ class DNNEvaluationPlotting(DNNTask):
         # ax.grid(linestyle="--", alpha=0.5)
         plt.savefig(self.output()["confusion_matrix"].path)
         plt.gcf().clear()
+
+
+"""
+Plot DNN distribution on test set
+"""
+
+
+class DNNDistributionPlotting(DNNTask):
+    def requires(self):
+        # return dict(data=ArrayNormalisation.req(self), model=DnnTrainer.req(self),)
+        return DNNTrainer.req(
+            self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout
+        )
+
+    def output(self):
+        return {
+            "real_processes": self.local_target("DNN_distribution.png"),
+            "predicted": self.local_target("DNN_predicted_distribution.png"),
+            "score_by_group": self.local_target("DNN_score_by_process.pdf"),
+        }
+
+    def store_parts(self):
+        # make plots for each use case
+        return (
+            super(DNNDistributionPlotting, self).store_parts()
+            + (self.analysis_choice,)
+            + (self.channel,)
+            + (self.n_layers,)
+            + (self.n_nodes,)
+            + (self.dropout,)
+            + (self.batch_size,)
+        )
+
+    @law.decorator.timeit(publish_message=True)
+    @law.decorator.notify
+    @law.decorator.safe_output
+    def run(self):
+
+        n_variables = len(self.config_inst.variables)
+        n_processes = len(self.config_inst.get_aux("DNN_process_template").keys())
+        all_processes = list(self.config_inst.get_aux("DNN_process_template").keys())
+
+        # load complete model
+        reconstructed_model = keras.models.load_model(
+            self.input()["collection"].targets[0]["saved_model"].path
+        )
+
+        # load all the prepared data thingies
+        X_test = np.load(self.input()["collection"].targets[0]["X_test"].path)
+        y_test = np.load(self.input()["collection"].targets[0]["y_test"].path)
+
+        # test_loss, test_acc = reconstructed_model.evaluate(X_test, y_test)
+        # print("Test accuracy:", test_acc)
+
+        test_predict = reconstructed_model.predict(X_test)
+
+        # from IPython import embed;embed()
+
+        self.output()["real_processes"].parent.touch()
+
+        colors = ["black", "blue", "red", "yellow", "brown"]
+
+        ### label
+        fig = plt.figure()
+
+        for i in range(n_processes):
+            plt.hist(
+                test_predict[y_test[:, i] == 1][:, i],
+                label=all_processes[i],
+                histtype="step",
+                density=True,
+                linewidth=1.5,
+                color=colors[i],
+                bins=10,
+            )
+
+        plt.xlabel("DNN Score", fontsize=16)
+        plt.ylabel("Score", fontsize=16)
+        plt.title("Real processes", fontsize=16)
+        plt.legend()
+        plt.savefig(self.output()["real_processes"].path)
+        plt.gcf().clear()
+
+        ### argmax
+        fig = plt.figure()
+
+        for i in range(n_processes):
+            plt.hist(
+                test_predict[np.argmax(test_predict, axis=1) == i][:, i],
+                label=all_processes[i],
+                histtype="step",
+                density=True,
+                linewidth=1.5,
+                color=colors[i],
+                bins=10,
+            )
+
+        plt.xlabel("DNN Score", fontsize=16)
+        plt.ylabel("Score", fontsize=16)
+        plt.title("Predicted processes", fontsize=16)
+        plt.legend()
+        plt.savefig(self.output()["predicted"].path)
+        plt.gcf().clear()
+
+        # create pdf object to save figures on separate pages
+        with PdfPages(self.output()["score_by_group"].path) as pdf:
+            for i, proc in enumerate(all_processes):
+                fig = plt.figure()
+
+                for j in range(n_processes):
+                    plt.hist(
+                        test_predict[y_test[:, i] == 1][:, j],
+                        label=all_processes[j] + " score",
+                        histtype="step",
+                        density=True,
+                        linewidth=1.5,
+                        color=colors[j],
+                        bins=10,
+                    )
+                plt.xlabel("DNN Score", fontsize=16)
+                plt.ylabel("Score", fontsize=16)
+                plt.title("DNN Scores for {}".format(proc), fontsize=16)
+                plt.legend()
+
+                pdf.savefig(fig)
+                plt.close(fig)

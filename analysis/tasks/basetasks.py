@@ -83,12 +83,13 @@ class CampaignTask(BaseTask):
 
 
 class AnalysisTask(CampaignTask):
-    # analysis_id = "mj"
-    analysis_id = "0b"
+    analysis_id = "mj"
+    # analysis_id = "0b"
     # luigi.Parameter(
     # default="mj",
     # description="type of analysis, start with mj",
-    # ) # os.environ["DHA_ANALYSIS_ID"]
+    # )
+    # os.environ["DHA_ANALYSIS_ID"]
 
     task_namespace = "{}".format(analysis_id)
 
@@ -295,8 +296,9 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.custom_content.append(("universe", "vanilla"))
         # require more RAM on CPU
         # config.custom_content.append(("request_cpus", "1"))
-        config.custom_content.append(("request_memory", "15000"))
-        config.custom_content.append(("+RequestRuntime = 86400"))
+        config.custom_content.append(("request_memory", "5000"))
+        # config.custom_content.append(("+RequestRuntime = 86400"))
+        config.custom_content.append(("+RequestRuntime = 10*60*60"))
         # config.custom_content.append(("Request_GPUs", "0"))
         # config.custom_content.append(("Request_GpuMemory", "0"))
 

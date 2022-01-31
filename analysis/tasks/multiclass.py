@@ -43,9 +43,7 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         return {
             "saved_model": self.local_target("saved_model"),
             "history_callback": self.local_target("history.pckl"),
-            # test data for plotting
-            "test_data": self.local_target("test_data.npy"),
-            "test_labels": self.local_target("test_labels.npy"),
+            # test acc for optimizationdata for plotting
             "test_acc": self.local_target("test_acc.json"),
         }
 
@@ -111,6 +109,7 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
                 n_nodes, activation=tf.nn.relu, kernel_regularizer="l2"
             )(x)
             x = keras.layers.Dropout(dropout)(x)
+            x = keras.layers.BatchNormalization()(x)
 
         out = keras.layers.Dense(n_processes, activation=tf.nn.softmax)(x)
         model = keras.models.Model(inputs=inp, outputs=out)
@@ -122,17 +121,6 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             metrics=["accuracy"],
         )
         return model
-
-    def calc_norm_parameter(self, data):
-        # return values to shift distribution to normal
-
-        dat = np.swapaxes(data, 0, 1)
-        means, stds = [], []
-        for var in dat:
-            means.append(var.mean())
-            stds.append(var.std())
-
-        return np.array(means), np.array(stds)
 
     def calc_class_weights(self, y_train, norm=1, sqrt=False):
         # calc class weights to battle imbalance
@@ -155,6 +143,17 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             return dict(enumerate(weight_array))
 
     def data_generator(self, X_train, y_train, batch_size, n_processes):
+
+        # maybe something like np.array_split(a,10)
+        # b_split=np.array_split(b,len(b)//len(a_split[0]))
+        """
+        In [24]: try:
+            ...:     new_a[0]
+            ...: except:
+            ...:     new_a = np.array_split(a,10)
+            ...: else:
+            ...:     new_a.remove(new_a[0])
+        """
 
         while True:
 
@@ -233,56 +232,23 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         # + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         # )
 
-        # all_processes = self.config_inst.get_aux("process_groups")["default"]
-
-        # load data
+        # define dimensions, working with aux template for processes
         n_variables = len(self.config_inst.variables)
-        n_processes = (
-            len(self.config_inst.processes) - 3
-        )  # substract data, substracted FIXME
+        n_processes = len(self.config_inst.get_aux("DNN_process_template").keys())
 
-        """
-        train_data = np.load(self.input()[self.channel]["train"]["data"].path)
-        train_labels = np.load(self.input()[self.channel]["train"]["label"].path)
-        train_weights = np.load(self.input()[self.channel]["train"]["weight"].path)
-        val_data = np.load(self.input()[self.channel]["validation"]["data"].path)
-        val_labels = np.load(self.input()[self.channel]["validation"]["label"].path)
-        test_data = np.load(self.input()[self.channel]["test"]["data"].path)
-        test_labels = np.load(self.input()[self.channel]["test"]["label"].path)
-        data = np.append(train_data, val_data, axis=0)
-        data = np.append(data, test_data, axis=0)
-        """
+        # load the prepared data and labels
+        X_train = self.input()["X_train"].load()
+        y_train = self.input()["y_train"].load()
+        X_val = self.input()["X_val"].load()
+        y_val = self.input()["y_val"].load()
+        X_test = self.input()["X_test"].load()
+        y_test = self.input()["y_test"].load()
 
-        # kinda bad solution, but I want to keep all processes as separate npy files
-        arr_list = []
-
-        for key in self.input().keys():
-            arr_list.append((self.input()[key].load()))
-
-        # dont concatenate, parallel to each other
-        arr_conc = np.concatenate(list(a for a in arr_list[:-1]))
-        labels = arr_list[-1]
-
-        labels = np.swapaxes(labels, 0, 1)
-
-        # move QCD into rare, importan, n_processes is wrong now!
-        labels[labels[:, 1] == 1] = [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
-        labels = np.delete(labels, 1, 1)
-
-        # split up test set 95
-        Trainset, X_test, Trainlabel, y_test = skm.train_test_split(
-            arr_conc, labels, test_size=0.05, random_state=42
+        # definition for the normalization layer
+        means, stds = (
+            self.input()["means_stds"].load()[0],
+            self.input()["means_stds"].load()[1],
         )
-
-        # train and validation set 80:20 FIXME
-        X_train, X_val, y_train, y_val = skm.train_test_split(
-            Trainset, Trainlabel, test_size=0.2, random_state=24
-        )
-
-        # configure the norm layer. Give it mu/sigma, layer is frozen
-        # gamma, beta are for linear activations, so set them to unity transfo
-        means, stds = self.calc_norm_parameter(arr_conc)
-        print(means.shape)
         gamma = np.ones((n_variables,))
         beta = np.zeros((n_variables,))
 
@@ -305,13 +271,13 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         # log_dir=TENSORBOARD_PATH, histogram_freq=0, write_graph=True
         # )
         reduce_lr = keras.callbacks.ReduceLROnPlateau(
-            monitor="val_loss", factor=0.2, patience=20, min_lr=0.001
+            monitor="val_loss", factor=0.5, patience=25, min_lr=0.001
         )
         stop_of = keras.callbacks.EarlyStopping(
-            monitor="val_accuracy",  # accuracy
+            monitor="val_loss",  # accuracy
             verbose=1,
             min_delta=0.0,
-            patience=20,
+            patience=50,
             restore_best_weights=True,  # for now
         )
 
@@ -344,7 +310,8 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             validation_data=(X_val, y_val),
             epochs=self.epochs,
             verbose=2,
-            steps_per_epoch=50,  # len(X_train) // self.batch_size,
+            # iterate enough for smallest dataset
+            steps_per_epoch=len(y_train[y_train[:, 1] == 1]) // self.batch_size,
             callbacks=[stop_of, reduce_lr],  # tensorboard],
         )
 
@@ -371,10 +338,6 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         with open(self.output()["history_callback"].path, "wb") as f:
             pickle.dump(history_callback.history, f)
 
-        # test data
-        self.output()["test_data"].dump(X_test)
-        self.output()["test_labels"].dump(y_test)
-
         console = Console()
         # load test dta/labels and evaluate on unseen data
         test_loss, test_acc = model.evaluate(X_test, y_test)
@@ -397,17 +360,17 @@ class DNNHyperParameterOpt(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
 
     def requires(self):
         # require DNN trainer with different configurations and monitor performance
-        layers = [2, 3]  # ,3,4]
+        layers = [2]  # ,3,4]
         nodes = [128, 256]  # ,256,512]
-        dropout = [0.2, 0.3]  # ,0.4]
+        dropout = [0.2]  # ,0.4]
         grid_search = {
             "{}_{}_{}".format(lay, nod, drop): DNNTrainer.req(
                 self,
                 n_layers=lay,
                 n_nodes=nod,
                 dropout=drop,
-                epochs=25,
-                # workflow="local",
+                epochs=5,
+                workflow="local",
                 # job_number=len(layers)*len(nodes)*len (dropout),
                 # workers=len(layers)*len(nodes)*len(dropout),
             )
@@ -436,6 +399,7 @@ class DNNHyperParameterOpt(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         embed()
 
         # output = yield Objective.req(self, x=x, iteration=self.branch, branch=-1)
+        # from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, BayesSearchCV
 
         performance = {}
 
