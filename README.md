@@ -1,5 +1,3 @@
-# DISCLAIMER: currently in development under branch law_introduction
-
 # SusyLeptonAnalysis
 
 TODO: Structure
