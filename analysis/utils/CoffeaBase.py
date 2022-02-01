@@ -262,8 +262,6 @@ class BaseSelection:
         HLTElectronOr = events.HLTElectronOr
         HLTMuonOr = events.HLTMuonOr
 
-        # from IPython import embed;embed()
-
         self.add_to_selection(selection, "HLTElectronOr", events.HLTElectronOr)
         self.add_to_selection(selection, "HLTLeptonOr", events.HLTLeptonOr)
         self.add_to_selection(selection, "HLTMETOr", events.HLTMETOr)
@@ -364,9 +362,9 @@ class BaseSelection:
         # control_region = ["controlRegion"]
 
         categories = dict(
-            N0b_SR=common + ["zero_b", "signalRegion"],
+            # N0b_SR=common + ["zero_b", "signalRegion"],
             N1b_SR=common + ["multi_b", "signalRegion"],
-            N0b_CR=common + ["zero_b", "controlRegion"],
+            # N0b_CR=common + ["zero_b", "controlRegion"],
             N1b_CR=common + ["multi_b", "controlRegion"],
         )
 

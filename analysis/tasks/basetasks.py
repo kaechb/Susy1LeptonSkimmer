@@ -226,32 +226,6 @@ class DatasetTask(ConfigTask):  # ShiftTask
         else:
             self.process_inst = None
 
-    # @property
-    # def store_parts(self):
-    # parts = super(DatasetTask, self).store_parts
-    # # insert the dataset name right before the shift
-    #
-    # parts = parts[:-1] + (self.dataset, parts[-1])
-    # return parts
-
-
-# Syntax setting of condor output
-# class HTCondorJobManagerRWTH(law.htcondor.HTCondorJobManager):
-## @classmethod
-# def map_status(cls, status_flag):
-# # map status hold ("5", "H") and suspended ("7") to
-# # cls.PENDING to avoid resubmission
-# if status_flag in ("0", "1", "5", "7", "U", "I", "H"):
-# return cls.PENDING
-# elif status_flag in ("2", "R"):
-# return cls.RUNNING
-# elif status_flag in ("4", "C"):
-# return cls.FINISHED
-# elif status_flag in ("6", "E"):
-# return cls.FAILED
-# else:
-# return cls.FAILED
-
 
 class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     debug = luigi.BoolParameter()
@@ -298,7 +272,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         # config.custom_content.append(("request_cpus", "1"))
         config.custom_content.append(("request_memory", "5000"))
         # config.custom_content.append(("+RequestRuntime = 86400"))
-        config.custom_content.append(("+RequestRuntime = 10*60*60"))
+        # config.custom_content.append(("+RequestRuntime = 10*60*60"))
         # config.custom_content.append(("Request_GPUs", "0"))
         # config.custom_content.append(("Request_GpuMemory", "0"))
 

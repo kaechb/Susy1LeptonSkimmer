@@ -129,8 +129,8 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
 
         weight_array = norm * class_weight.compute_class_weight(
             "balanced",
-            np.unique(np.argmax(y_train, axis=-1)),
-            np.argmax(y_train, axis=-1),
+            classes=np.unique(np.argmax(y_train, axis=-1)),
+            y=np.argmax(y_train, axis=-1),
         )
 
         if sqrt:
@@ -144,16 +144,7 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
 
     def data_generator(self, X_train, y_train, batch_size, n_processes):
 
-        # maybe something like np.array_split(a,10)
-        # b_split=np.array_split(b,len(b)//len(a_split[0]))
-        """
-        In [24]: try:
-            ...:     new_a[0]
-            ...: except:
-            ...:     new_a = np.array_split(a,10)
-            ...: else:
-            ...:     new_a.remove(new_a[0])
-        """
+        # generate a batch for each step of the epoch, currently drawing random
 
         while True:
 
@@ -170,57 +161,8 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
                 labels[:, i] = 1
                 one_hot_labels.append(labels)
 
-            """
-            try:
-                count_events
-            except NameError:
-                count_events = 0
-            else:
-                count_events += individual_batch_size
-
-            if count_events > np.sum(y_train[:, 4] == 1):
-                # print("epoch done with {} entries".format(count_events))
-                count_events = 0
-
-            if self.debug:
-                from IPython import embed;embed()
-            """
-
             yield np.concatenate(arrays), np.concatenate(one_hot_labels)
             # print("yielded!")
-
-    """
-    def data_generator(self, training_input, training_labels, individual_batch_size, n_processes):
-
-        #import sk.preprocessing.OneHotEncoder
-        arrays,one_hot_labels = [], []
-
-        #for i, arr in enumerate(training_input):
-
-        for i in range(n_processes):
-            arr=training_input[training_labels[:,i]==1]
-            choice=np.random.choice(np.arange(0,len(arr),1), size=individual_batch_size , replace=False)
-            arrays.append(arr[choice])
-            labels = np.zeros((individual_batch_size, n_processes))
-            labels[:,i] = 1
-            one_hot_labels.append(labels)
-
-        yield (np.concatenate(arrays), np.concatenate(one_hot_labels))
-
-
-    something like
-    ds_counter = tf.data.Dataset.from_generator(count, args=[25], output_types=tf.int32, output_shapes = (), )
-    def gen_series():
-      i = 0
-      while True:
-        size = np.random.randint(0, 10)
-        yield i, np.random.normal(size=(size,))
-        i += 1
-    ds_series = tf.data.Dataset.from_generator(
-        gen_series,
-        output_types=(tf.int32, tf.float32),
-        output_shapes=((), (None,)))
-    """
 
     @law.decorator.timeit(publish_message=True)
     @law.decorator.safe_output
@@ -283,13 +225,10 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
 
         # calc class weights for training so all classes get some love
         # scale up by abundance, additional factor to tone the values down a little
-        class_weights = self.calc_class_weights(
-            y_train, norm=self.norm_class_weights, sqrt=self.use_sqrt
-        )
-        print("\nclass weights", class_weights, "\n")
-
-        # generator = self.data_generator(X_train, y_train, int(self.batch_size/n_processes), n_processes)
-        # print(generator)
+        # class_weights = self.calc_class_weights(
+        #    y_train, norm=self.norm_class_weights, sqrt=self.use_sqrt
+        # )
+        # print("\nclass weights", class_weights, "\n")
 
         # check if everything looks fines, exit by crtl+D
         if self.debug:
@@ -315,6 +254,7 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             callbacks=[stop_of, reduce_lr],  # tensorboard],
         )
 
+        # call without data generator
         """
         history_callback = model.fit(
             X_train,

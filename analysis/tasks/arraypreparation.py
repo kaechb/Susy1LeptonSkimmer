@@ -21,7 +21,7 @@ class ArrayNormalisation(ConfigTask):
     Current idea: normalise them to prepare for the DNN
     """
 
-    channel = luigi.Parameter(default="N0b_CR", description="channel to prepare")
+    channel = luigi.Parameter(default="N1b_CR", description="channel to prepare")
 
     def requires(self):
         return {
@@ -78,24 +78,6 @@ class ArrayNormalisation(ConfigTask):
     def run(self):
 
         self.output()["one_hot_labels"].parent.touch()
-        # inp = self.input()["collection"][0].load()
-        # array = self.input()["collection"].targets[0]["N0b_TTZ_qq"].load()
-        # path=self.input()["collection"].targets[0].path
-
-        # print(self.config_inst.variables.names(), ":")
-        # print(array)
-
-        # In [6]: self.config_inst.get_aux("DNN_process_template")
-        # self.config_inst.categories.names()
-
-        """
-        b=self.config_inst.get_aux("DNN_process_template")["W+jets"]
-        c=self.config_inst.get_process(b[0])
-        for c2 in c.walk_processes():
-        print(c2[0].name)
-        self.config_inst.categories.names()
-
-        """
 
         # load inputs from ArrayExporter
         target_dict = self.input()["complete"]["collection"].targets
@@ -165,62 +147,3 @@ class ArrayNormalisation(ConfigTask):
         # save all arrays away, using the fact that keys have the variable name
         for key in self.output().keys():
             self.output()[key].dump(eval(key))
-
-        """
-        one_hot_scheme = [
-            name for name in self.config_inst.processes.names() if "data" not in name
-        ]
-
-        proc_dict = {}
-        for cat in self.config_inst.categories.names():
-            for proc in self.config_inst.processes:
-                if "data" in proc.name:
-                    continue
-                target_list = []
-                for child in proc.walk_processes():
-                    key = cat + "_" + child[0].name
-
-                    if key in file_dict.keys():
-                        target_list.append(file_dict[key])
-
-                proc_dict.update({cat + "_" + proc.name: target_list})
-
-        check_if = 0
-
-        for key in proc_dict.keys():
-            # for arr_list in proc_dict[key]:
-            if not self.channel in key:
-                continue
-
-            array = np.vstack([array.load() for array in proc_dict[key]])
-
-            print(key)
-            process = key.replace(self.channel + "_", "")
-            position = one_hot_scheme.index(process)
-            labels = np.zeros((len(one_hot_scheme), len(array)))
-            labels[position] = 1
-
-            # this is sooo ugly, but unlike lists, appending numpy arrays requires a filling beforehand
-            # otherwise try except else
-            if check_if == 0:
-                one_hot_labels = labels
-                check_if += 1
-
-            else:
-                one_hot_labels = np.append(one_hot_labels, labels, axis=1)
-
-            # change axis for normalisation, overwrite array to be memory friendly
-            # save values for normalisation layer
-            # I should not norm each process on their own I guess
-            # norm_values = []
-            # array = np.moveaxis(array, 1, 0)
-            # for i, arr in enumerate(array):
-            #    array[i], mean, std = self.normalise(arr)
-            #    norm_values.append([mean, std])
-
-            # roll axis back for dnn input
-            # array = np.moveaxis(array, 1, 0)
-            # np.save(self.output().parent.path + "/normed_" + key, array)
-
-            self.output()[key].dump(array)
-        """

@@ -243,6 +243,16 @@ for year, cfg in ("2016", config_2016), ("2017", config_2017):
             },
         )
 
+        cfg.set_aux(
+            "DNN_process_template",
+            {
+                "tt_1l": ["st", "TTJets_sl_fromt", "TTJets_sl_fromtbar"],
+                "tt_2l": ["TTJets_dilep"],
+                "W+jets": ["WJets", "DY", "rare"],
+            },
+        )
+
+
 """
 
 ST_tW_top_5f_inclusiveDecays_13TeV-powheg-pythia8_TuneCUETP8M1_RunIISummer16NanoAODv6-PUMoriond17_Nano25Oct2019_102X_mcRun2_asymptotic_v7_ext1-v1_NANOAODSIM
