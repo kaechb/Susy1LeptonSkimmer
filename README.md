@@ -15,8 +15,8 @@ python beautify.py
 ```
 
 Setup law indexing, autocompletion and task recognition
-```shell
 law setup: 
+```shell
 source analysis/setup.sh
 law index 
 ```
