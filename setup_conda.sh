@@ -4,8 +4,8 @@ export DUST=/nfs/dust/cms/user/$USER/
 cd $DUST
 mkdir Anaconda Anaconda/envs  Anaconda/pkgs
 cd Anaconda
-conda config --add envs_dirs $DUST/$USER/Anaconda/envs
-conda config --add pkgs_dirs $DUST/$USER/Anaconda/pkgs
+conda config --add envs_dirs $DUST/Anaconda/envs
+conda config --add pkgs_dirs $DUST/Anaconda/pkgs
 conda create -n susy1lep
 conda activate susy1lep
 conda install conda -y
