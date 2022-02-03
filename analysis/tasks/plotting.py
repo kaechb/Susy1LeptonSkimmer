@@ -21,6 +21,8 @@ from tasks.coffea import CoffeaProcessor
 from tasks.arraypreparation import ArrayNormalisation
 from tasks.pytorch_test import PytorchMulticlass
 
+import utils.PytorchHelp as util
+
 
 class PlotCoffeaHists(ConfigTask):
 
@@ -303,8 +305,8 @@ class DNNHistoryPlotting(DNNTask):
 
     def output(self):
         return {
-            "loss_plot": self.local_target("loss_plot.png"),
-            "acc_plot": self.local_target("acc_plot.png"),
+            "loss_plot": self.local_target("torch_loss_plot.png"),
+            "acc_plot": self.local_target("torch_acc_plot.png"),
         }
 
     def store_parts(self):
@@ -313,43 +315,40 @@ class DNNHistoryPlotting(DNNTask):
             super(DNNHistoryPlotting, self).store_parts()
             + (self.analysis_choice,)
             + (self.channel,)
-            + (self.n_layers,)
-            + (self.n_nodes,)
-            + (self.dropout,)
+            # + (self.n_layers,)
+            # + (self.n_nodes,)
+            # + (self.dropout,)
             + (self.batch_size,)
+            + (self.learning_rate,)
         )
 
     @law.decorator.timeit(publish_message=True)
     @law.decorator.notify
     @law.decorator.safe_output
     def run(self):
-        # retrieve history callback for trainings history
-        from IPython import embed
+        # retrieve history callback for trainings
+        accuracy_stats = (
+            self.input()[0]["collection"].targets[0]["accuracy_stats"].load()
+        )
+        loss_stats = self.input()[0]["collection"].targets[0]["loss_stats"].load()
 
-        embed()
-        # with open(self.input()["history_callback"].path, "rb") as f:
-        with open(
-            self.input()["collection"].targets[0]["history_callback"].path, "rb"
-        ) as f:
-            history = pickle.load(f)
+        train_loss = loss_stats["train"]
+        test_loss = loss_stats["val"]
 
-        train_loss_history = history["loss"]
-        val_loss = history["val_loss"]
-
-        train_acc_history = history["accuracy"]
-        val_acc = history["val_accuracy"]
+        train_acc = accuracy_stats["train"]
+        test_acc = accuracy_stats["val"]
 
         self.output()["loss_plot"].parent.touch()
 
         plt.plot(
-            np.arange(1, len(val_loss) + 1, 1),
-            val_loss,
+            np.arange(1, len(test_loss) + 1, 1),
+            test_loss,
             label="loss on valid data",
             color="orange",
         )
         plt.plot(
-            np.arange(1, len(train_loss_history) + 1, 1),
-            train_loss_history,
+            np.arange(1, len(train_loss) + 1, 1),
+            train_loss,
             label="loss on train data",
             color="green",
         )
@@ -360,14 +359,14 @@ class DNNHistoryPlotting(DNNTask):
         plt.gcf().clear()
 
         plt.plot(
-            np.arange(1, len(val_acc) + 1, 1),
-            val_acc,
+            np.arange(1, len(test_acc) + 1, 1),
+            test_acc,
             label="acc on vali data",
             color="orange",
         )
         plt.plot(
-            np.arange(1, len(train_acc_history) + 1, 1),
-            train_acc_history,
+            np.arange(1, len(train_acc) + 1, 1),
+            train_acc,
             label="acc on train data",
             color="green",
         )
@@ -396,8 +395,8 @@ class DNNEvaluationPlotting(DNNTask):
 
     def output(self):
         return {
-            "ROC": self.local_target("ROC.png"),
-            "confusion_matrix": self.local_target("confusion_matrix.png"),
+            "ROC": self.local_target("pytorch_ROC.png"),
+            "confusion_matrix": self.local_target("pytorch_confusion_matrix.png"),
         }
 
     def store_parts(self):
@@ -406,10 +405,11 @@ class DNNEvaluationPlotting(DNNTask):
             super(DNNEvaluationPlotting, self).store_parts()
             + (self.analysis_choice,)
             + (self.channel,)
-            + (self.n_layers,)
-            + (self.n_nodes,)
-            + (self.dropout,)
+            # + (self.n_layers,)
+            # + (self.n_nodes,)
+            # + (self.dropout,)
             + (self.batch_size,)
+            + (self.learning_rate,)
         )
 
     @law.decorator.timeit(publish_message=True)
@@ -423,25 +423,42 @@ class DNNEvaluationPlotting(DNNTask):
         n_processes = len(self.config_inst.get_aux("DNN_process_template").keys())
         all_processes = list(self.config_inst.get_aux("DNN_process_template").keys())
 
+        path = self.input()["model"]["collection"].targets[0]["model"].path
+
         # load complete model
-        reconstructed_model = keras.models.load_model(
-            self.input()["model"]["collection"].targets[0]["saved_model"].path
-        )
+        reconstructed_model = torch.load(path)
 
         # load all the prepared data thingies
         X_test = self.input()["data"]["X_test"].load()
         y_test = self.input()["data"]["y_test"].load()
 
+        test_dataset = util.ClassifierDataset(
+            torch.from_numpy(X_test).float(), torch.from_numpy(y_test).float()
+        )
+        test_loader = torch.utils.data.DataLoader(
+            dataset=test_dataset, batch_size=len(y_test)
+        )
+
         # test_loss, test_acc = reconstructed_model.evaluate(X_test, y_test)
         # print("Test accuracy:", test_acc)
 
-        test_predict = reconstructed_model.predict(X_test)
+        test_predictions = []
+        with torch.no_grad():
 
-        # "signal"...
-        predict_signal = reconstructed_model.predict(X_test)[:, 0]
+            reconstructed_model.eval()
+            for X_test_batch, y_test_batch in test_loader:
+
+                y_test_pred = reconstructed_model(X_test_batch)
+
+                test_predictions.append(np.array(y_test_pred.argmax(axis=1)))
+
+            # test_predict = reconstructed_model.predict(X_test)
+
+            # "signal"...
+            # predict_signal = reconstructed_model.predict(X_test)[:, 0]
 
         self.output()["confusion_matrix"].parent.touch()
-
+        """
         # Roc curve, compare labels and predicted labels
         fpr, tpr, tresholds = sk.metrics.roc_curve(y_test[:, 0], predict_signal)
 
@@ -457,12 +474,13 @@ class DNNEvaluationPlotting(DNNTask):
         plt.legend()
         plt.savefig(self.output()["ROC"].path)
         plt.gcf().clear()
+        """
 
         # Correlation Matrix Plot
         # plot correlation matrix
         pred_matrix = sk.metrics.confusion_matrix(
             np.argmax(y_test, axis=-1),
-            np.argmax(test_predict, axis=-1),
+            np.concatenate(test_predictions),
             normalize=self.normalize,
         )
 
@@ -481,7 +499,7 @@ class DNNEvaluationPlotting(DNNTask):
                     np.round(pred_matrix[i, j], 3),
                     ha="center",
                     va="center",
-                    color="black",
+                    color="white",
                 )
         ticks = np.arange(0, n_processes, 1)
         # Let the horizontal axes labeling appear on bottom
