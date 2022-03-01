@@ -401,7 +401,7 @@ class DNNEvaluationPlotting(DNNTask):
                 n_layers=self.n_layers,
                 n_nodes=self.n_nodes,
                 dropout=self.dropout,
-                debug=True,
+                debug=False,
             ),
         )
         # return DNNTrainer.req(
@@ -543,7 +543,12 @@ class DNNDistributionPlotting(DNNTask):
         return dict(
             data=ArrayNormalisation.req(self),
             model=PytorchMulticlass.req(
-                self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout
+                self,
+                n_layers=self.n_layers,
+                n_nodes=self.n_nodes,
+                dropout=self.dropout,
+                learning_rate=self.learning_rate,
+                debug=False,
             ),
         )
 
@@ -552,6 +557,7 @@ class DNNDistributionPlotting(DNNTask):
             "real_processes": self.local_target("DNN_distribution.png"),
             "predicted": self.local_target("DNN_predicted_distribution.png"),
             "score_by_group": self.local_target("DNN_score_by_process.pdf"),
+            "2D_variable_plots": self.local_target("DNN_score_2D_variables.pdf"),
         }
 
     def store_parts(self):
@@ -575,21 +581,40 @@ class DNNDistributionPlotting(DNNTask):
         n_processes = len(self.config_inst.get_aux("DNN_process_template").keys())
         all_processes = list(self.config_inst.get_aux("DNN_process_template").keys())
 
-        # load complete model
-        reconstructed_model = keras.models.load_model(
-            self.input()["collection"].targets[0]["saved_model"].path
-        )
-
         # load all the prepared data thingies
-        X_test = np.load(self.input()["collection"].targets[0]["X_test"].path)
-        y_test = np.load(self.input()["collection"].targets[0]["y_test"].path)
+        X_test = self.input()["data"]["X_test"].load()
+        y_test = self.input()["data"]["y_test"].load()
 
         # val_loss, val_acc = reconstructed_model.evaluate(X_test, y_test)
         # print("Test accuracy:", val_acc)
+        test_dataset = util.ClassifierDataset(
+            torch.from_numpy(X_test).float(), torch.from_numpy(y_test).float()
+        )
+        test_loader = torch.utils.data.DataLoader(
+            dataset=test_dataset, batch_size=len(y_test)
+        )
+        path = self.input()["model"]["collection"].targets[0]["model"].path
 
-        test_predict = reconstructed_model.predict(X_test)
+        # load complete model
+        reconstructed_model = torch.load(path)
+        """
+        y_predictions = []
+        with torch.no_grad():
 
-        # from IPython import embed;embed()
+            reconstructed_model.eval()
+            for X_test_batch, y_test_batch in test_loader:
+
+                y_test_pred = reconstructed_model(X_test_batch)
+
+                y_predictions.append(y_test_pred.numpy())
+
+            # test_predict = reconstructed_model.predict(X_test)
+            y_predictions = np.array(y_predictions[0])
+            test_predictions = np.argmax(y_predictions, axis=1)
+        """
+        test_predict = reconstructed_model(torch.tensor(X_test))
+        # FIXME
+        test_predict = reconstructed_model.softmax(test_predict)
 
         self.output()["real_processes"].parent.touch()
 
@@ -600,7 +625,7 @@ class DNNDistributionPlotting(DNNTask):
 
         for i in range(n_processes):
             plt.hist(
-                test_predict[y_test[:, i] == 1][:, i],
+                test_predict.detach().numpy()[y_test[:, i] == 1][:, i],
                 label=all_processes[i],
                 histtype="step",
                 density=True,
@@ -621,7 +646,9 @@ class DNNDistributionPlotting(DNNTask):
 
         for i in range(n_processes):
             plt.hist(
-                test_predict[np.argmax(test_predict, axis=1) == i][:, i],
+                test_predict.detach().numpy()[
+                    np.argmax(test_predict.detach().numpy(), axis=1) == i
+                ][:, i],
                 label=all_processes[i],
                 histtype="step",
                 density=True,
@@ -644,7 +671,7 @@ class DNNDistributionPlotting(DNNTask):
 
                 for j in range(n_processes):
                     plt.hist(
-                        test_predict[y_test[:, i] == 1][:, j],
+                        test_predict.detach().numpy()[y_test[:, i] == 1][:, j],
                         label=all_processes[j] + " score",
                         histtype="step",
                         density=True,
@@ -659,6 +686,33 @@ class DNNDistributionPlotting(DNNTask):
 
                 pdf.savefig(fig)
                 plt.close(fig)
+
+        with PdfPages(self.output()["2D_variable_plots"].path) as pdf:
+            for i, proc in enumerate(all_processes):
+                for j, var in enumerate(self.config_inst.variables.names()):
+
+                    fig = plt.figure()
+
+                    plt.hist2d(
+                        test_predict.detach().numpy()[y_test[:, i] == 1][:, i],
+                        X_test[:, j][y_test[:, i] == 1],
+                        bins=50,
+                    )
+
+                    plt.xlabel("DNN Score", fontsize=16)
+                    plt.ylabel(
+                        "{} {}".format(
+                            self.config_inst.get_variable(var).x_title,
+                            self.config_inst.get_variable(var).unit,
+                        ),
+                        fontsize=16,
+                    )
+                    plt.title("2D {} {}".format(proc, var), fontsize=16)
+                    # plt.legend()
+                    plt.colorbar()
+
+                    pdf.savefig(fig)
+                    plt.close(fig)
 
 
 class PlotFeatureImportance(DNNTask):  # , HTCondorWorkflow, law.local
@@ -706,11 +760,11 @@ class PlotFeatureImportance(DNNTask):  # , HTCondorWorkflow, law.local
         # load all the prepared data thingies
         X_test = self.input()["data"]["X_test"].load()
         y_test = self.input()["data"]["y_test"].load()
+        test_input_tensor = torch.from_numpy(X_test).type(torch.FloatTensor)
+        baseline = torch.zeros(2, 14)
 
         ig = IntegratedGradients(reconstructed_model)
 
-        test_input_tensor = torch.from_numpy(X_test).type(torch.FloatTensor)
-        baseline = torch.zeros(2, 14)
         out_probs = reconstructed_model(test_input_tensor).detach().numpy()
         out_classes = np.argmax(out_probs, axis=1)
         test_labels = np.argmax(y_test, axis=1)

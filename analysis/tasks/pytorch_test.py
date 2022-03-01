@@ -7,6 +7,7 @@ import sklearn.model_selection as skm
 from rich.console import Console
 from tqdm.auto import tqdm
 from time import time
+import ipdb
 
 # torch imports
 import torch
@@ -122,6 +123,7 @@ class PytorchMulticlass(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         )
 
         class_weights = self.calc_class_weights(y_train)
+        # class_weights = {1: 1, 2: 1, 3: 1}
 
         # declare device
         use_cuda = torch.cuda.is_available()
@@ -142,20 +144,27 @@ class PytorchMulticlass(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             n_processes * np.sum(y_test[:, 0] == 1) // self.batch_size
         )
 
+        # all in dat
+        """
         train_dataloader = data.DataLoader(
             dataset=train_dataset,
-            batch_size=self.batch_size,
-            # sampler=util.EventBatchSampler(
-            #   y_train, self.batch_size, n_processes, self.steps_per_epoch,
-            #   ),
+            # batch_size=self.batch_size,
+            batch_sampler=util.EventBatchSampler(
+                y_train,
+                self.batch_size,
+                n_processes,
+                self.steps_per_epoch,
+            ),
             num_workers=8,
         )
 
         val_dataloader = data.DataLoader(
             dataset=val_dataset,
-            batch_size=10 * self.batch_size,  # , shuffle=True  # len(val_dataset
+            batch_size=10 * self.batch_size,
+            #shuffle=True,  # len(val_dataset
             num_workers=8,
         )  # =1
+        """
 
         test_loader = data.DataLoader(
             dataset=test_dataset,
@@ -173,11 +182,16 @@ class PytorchMulticlass(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
 
         # declare lighnting callbacks
         early_stop_callback = pl.callbacks.early_stopping.EarlyStopping(
-            monitor="val_accuracy",
+            monitor="val_acc",
             min_delta=0.00,
             patience=10,
-            verbose=True,
+            verbose=False,
             mode="max",
+            strict=False,
+        )
+
+        swa_callback = pl.callbacks.StochasticWeightAveraging(
+            swa_epoch_start=0.5,
         )
 
         # have to apply softmax somewhere on validation/inference FIXME
@@ -189,106 +203,56 @@ class PytorchMulticlass(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             means=means,
             stds=stds,
             dropout=self.dropout,
-            class_weights=torch.tensor(list(class_weights.values())),
+            class_weights=torch.tensor(
+                list(class_weights.values())
+            ),  # no effect right now
             n_nodes=self.n_nodes,
         )
 
+        # define data
+        data_collection = util.DataModuleClass(
+            X_train,
+            y_train,
+            X_val,
+            y_val,
+            # X_test,
+            # y_test,
+            self.batch_size,
+            n_processes,
+            self.steps_per_epoch,
+        )
+
+        # needed for test evaluation
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(model.parameters(), lr=self.learning_rate)
+        # optimizer = optim.Adam(model.parameters(), lr=self.learning_rate)
 
         print(model)
         # accuracy_stats = {"train": [], "val": []}
         # loss_stats = {"train": [], "val": []}
 
+        # collect callbacks
+        callbacks = [early_stop_callback, swa_callback]
+
         # Trainer, for gpu gpus=1
-        trainer = pl.Trainer(max_epochs=self.epochs, num_nodes=1)
+        trainer = pl.Trainer(
+            max_epochs=self.epochs,
+            num_nodes=1,
+            callbacks=callbacks,
+            enable_progress_bar=False,
+            check_val_every_n_epoch=1,
+        )
 
         if self.debug:
             from IPython import embed
 
             embed()
         # fit the trainer, includes the whole training loop
-        trainer.fit(model, train_dataloader, val_dataloader)
+        # pdb.run(trainer.fit(model, dat))
+        # ipdb.set_trace()
 
-        """
-        for e in tqdm(range(1, self.epochs + 1)):
+        trainer.fit(model, data_collection)
 
-            # TRAINING
-            train_epoch_loss = 0
-            train_epoch_acc = 0
-            model.train()
-            for i, (X_train_batch, y_train_batch) in enumerate(train_loader):
-
-                #if i > self.steps_per_epoch:
-                #    break
-                # squeeze extra dimension coming from who knows:
-                X_train_batch, y_train_batch = X_train_batch.squeeze(
-                    0
-                ), y_train_batch.squeeze(0)
-
-                optimizer.zero_grad()
-                y_train_pred = model(X_train_batch)
-
-                train_loss = criterion(y_train_pred, y_train_batch)
-
-                train_acc = self.multi_acc(y_train_pred, y_train_batch)
-
-                train_loss.backward()
-                optimizer.step()
-
-                train_epoch_loss += train_loss.item()
-                train_epoch_acc += train_acc.item()
-                # print("check", train_epoch_acc, train_acc)
-
-            print("trained", time() - tic)
-
-            # VALIDATION
-            with torch.no_grad():
-
-                val_epoch_loss = 0
-                val_epoch_acc = 0
-
-                model.eval()
-                for X_val_batch, y_val_batch in val_loader:
-
-                    X_val_batch, y_val_batch = X_val_batch.squeeze(
-                    0
-                    ), y_val_batch.squeeze(0)
-
-
-                    y_val_pred = model(X_val_batch)
-
-                    val_loss = criterion(y_val_pred, y_val_batch)
-                    val_acc = self.multi_acc(y_val_pred, y_val_batch)
-
-                    val_epoch_loss += val_loss.item()
-                    val_epoch_acc += val_acc.item()
-
-            # have to rethink how to best reweight val / train loss, the data loader is different
-            loss_stats["train"].append(
-                train_epoch_loss /self.steps_per_epoch
-            )  # len(train_loader)
-            loss_stats["val"].append(val_epoch_loss / len(val_loader))
-            accuracy_stats["train"].append(
-                train_epoch_acc / self.steps_per_epoch
-            )  # len(train_loader)
-            accuracy_stats["val"].append(val_epoch_acc /len(val_loader))
-
-            #from IPython import embed;embed()
-
-            print(
-                "Epoch: {epoch} | Train loss: {train_loss} | Val loss: {val_loss} | Train Acc: {train_acc} | Val Acc: {val_acc}".format(
-                    epoch=e,
-                    train_loss=np.round(
-                        train_epoch_loss / self.steps_per_epoch, 4
-                    ),  # / len(train_loader)
-                    val_loss=np.round(val_epoch_loss / len(val_loader),4),
-                    train_acc=np.round(train_epoch_acc / self.steps_per_epoch, 3),  #
-                    val_acc=np.round(val_epoch_acc / len(val_loader),3),
-                )
-            )
-        """
-
+        # replace this loop with model(torch.tensor(X_test)) ?
         # evaluate test set
         with torch.no_grad():
 
@@ -318,40 +282,12 @@ class PytorchMulticlass(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             )
         )
         console.print(test_acc, "\n")
+        if self.debug:
+            from IPython import embed
 
+            embed()
         # save away all stats
         self.output()["model"].touch()
         torch.save(model, self.output()["model"].path)
         self.output()["loss_stats"].dump(model.loss_stats)
         self.output()["accuracy_stats"].dump(model.accuracy_stats)
-
-
-class FeatureImportance(DNNTask):
-    def requires(self):
-        return (
-            PytorchMulticlass.req(
-                self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout
-            ),
-        )
-
-    def run(self):
-
-        path = self.input()[0]["collection"].targets[0]["model"].path
-
-        reconstructed_model = torch.load(path)
-
-        ig = IntegratedGradients(reconstructed_model)
-
-        input = torch.rand(2, 14)
-        baseline = torch.zeros(2, 14)
-
-        attributions, delta = ig.attribute(
-            input, baseline, target=0, return_convergence_delta=True
-        )
-
-        print("IG Attributions:", attributions)
-        print("Convergence Delta:", delta)
-
-        from IPython import embed
-
-        embed()

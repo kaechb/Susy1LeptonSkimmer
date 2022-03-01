@@ -7,6 +7,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import Callback
 from torchmetrics import Accuracy
 import numpy as np
+from time import time
+import ipdb
 
 """
 # help class for torch data loading
@@ -45,8 +47,78 @@ class ClassifierDataset(data.Dataset):
         return len(self.X_data)
 
 
+# Custom dataset collecting all numpy arrays and bundles them for training
+class DataModuleClass(pl.LightningDataModule):
+    def __init__(
+        self, X_train, y_train, X_val, y_val, batch_size, n_processes, steps_per_epoch
+    ):
+        # define data
+        self.X_train = X_train
+        self.y_train = y_train
+        self.X_val = X_val
+        self.y_val = y_val
+        # self.X_test=X_test , X_test, y_test
+        # self.y_test=y_test
+        # define parameters
+        self.batch_size = batch_size
+        self.n_processes = n_processes
+        self.steps_per_epoch = steps_per_epoch
+
+    # def prepare_data(self):
+
+    # Define steps that should be done
+    # on only one GPU, like getting data.
+
+    def setup(self, stage=None):
+        # Define steps that should be done on
+        # every GPU, like splitting data, applying
+        # transform etc.
+        self.train_dataset = ClassifierDataset(
+            torch.from_numpy(self.X_train).float(),
+            torch.from_numpy(self.y_train).float(),
+        )
+        self.val_dataset = ClassifierDataset(
+            torch.from_numpy(self.X_val).float(), torch.from_numpy(self.y_val).float()
+        )
+        # do this somewhere else
+        # self.test_dataset = ClassifierDataset(
+        #    torch.from_numpy(self.X_test).float(), torch.from_numpy(self.y_test).float()
+        # )
+
+    def train_dataloader(self):
+        # from IPython import embed;embed()
+        return data.DataLoader(
+            dataset=self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            # batch_sampler=EventBatchSampler(
+            #    self.y_train,
+            #    self.batch_size,
+            #    self.n_processes,
+            #    self.steps_per_epoch,
+            # ),
+            num_workers=8,
+        )
+
+    def val_dataloader(self):
+        return data.DataLoader(
+            dataset=self.val_dataset,
+            batch_size=10 * self.batch_size,  # , shuffle=True  # len(val_dataset
+            num_workers=8,
+        )  # =1
+
+    # def test_dataloader(self):
+    # return data.DataLoader(
+    # dataset=self.test_dataset,
+    # batch_size=10 * self.batch_size,
+    # num_workers=8,  # , shuffle=True  # self.batch_size
+    # )
+
+
 # torch Multiclassifer
-class MulticlassClassification(pl.core.lightning.LightningModule):  # nn.Module
+class MulticlassClassification(
+    pl.LightningModule
+):  # nn.Module core.lightning.LightningModule
     def __init__(
         self, num_feature, num_class, means, stds, dropout, class_weights, n_nodes
     ):
@@ -74,20 +146,24 @@ class MulticlassClassification(pl.core.lightning.LightningModule):  # nn.Module
         # define global curves
         self.accuracy_stats = {"train": [], "val": []}
         self.loss_stats = {"train": [], "val": []}
+        self.epoch = 0
+
+        # lazy timing
+        self.start = time()
 
     def forward(self, x):
         x = self.norm(x)
         x = self.layer_1(x)
-        # x = self.batchnorm1(x)
+        x = self.batchnorm1(x)
         x = self.relu(x)
 
         x = self.layer_2(x)
-        # x = self.batchnorm2(x)
+        x = self.batchnorm2(x)
         x = self.relu(x)
         x = self.dropout(x)
 
         x = self.layer_3(x)
-        # x = self.batchnorm3(x)
+        x = self.batchnorm3(x)
         x = self.relu(x)
         x = self.dropout(x)
 
@@ -110,6 +186,7 @@ class MulticlassClassification(pl.core.lightning.LightningModule):  # nn.Module
         # Calling self.log will surface up scalars for you in TensorBoard
         self.log("val_loss", loss_step, prog_bar=True)
         self.log("val_acc", acc_step, prog_bar=True)
+        # print("val_loss", loss_step, "val_acc", acc_step)
         return {"val_loss": loss_step, "val_acc": acc_step}
 
     def test_step(self, batch, batch_idx):
@@ -126,7 +203,9 @@ class MulticlassClassification(pl.core.lightning.LightningModule):  # nn.Module
         # maybe we do this and a softmax layer at the end
         # loss = F.nll_loss(logits, y)
         loss_step = self.loss(logits, y)
-        # loss_step.backward() not necessary here, done during ? optimizer I guess
+        # from IPython import embed;embed()
+        # not necessary here, done during ? optimizer I guess
+        # loss_step.backward(retain_graph=True)
         self.log(
             "train_loss",
             loss_step,
@@ -152,7 +231,6 @@ class MulticlassClassification(pl.core.lightning.LightningModule):  # nn.Module
         loss.mean().backward()
         loss =(loss * sample_weight / sample_weight.sum()).sum()
         """
-
         # HAS to be called loss!!!
         return {"loss": loss_step, "acc": acc_step}
 
@@ -165,6 +243,18 @@ class MulticlassClassification(pl.core.lightning.LightningModule):  # nn.Module
         # save epoch wise metrics for later
         self.loss_stats["train"].append(loss_mean)
         self.accuracy_stats["train"].append(acc_mean)
+        self.epoch += 1
+        print(
+            "Epoch:",
+            self.epoch,
+            " time:",
+            np.round(time() - self.start, 5),
+            "\ntrain loss acc:",
+            loss_mean,
+            acc_mean,
+        )
+
+        # from IPython import embed;embed()
 
         # Has to return NONE
         # return outputs
@@ -177,6 +267,8 @@ class MulticlassClassification(pl.core.lightning.LightningModule):  # nn.Module
         # save epoch wise metrics for later
         self.loss_stats["val"].append(loss_mean)
         self.accuracy_stats["val"].append(acc_mean)
+
+        print("val loss acc:", loss_mean, acc_mean)
 
         # loss_mean = outputs['val_loss'].mean().item()
         # outputs["val_loss"] = loss_mean
@@ -218,6 +310,7 @@ class EventBatchSampler(data.Sampler):
 
     def __iter__(self):
         sub_batch_size = self.batch_size // self.n_processes
+        # arr_list = []
         for i in range(self.steps_per_epoch):
 
             try:
@@ -226,15 +319,16 @@ class EventBatchSampler(data.Sampler):
                 batch_counter = [0, 0, 0]
 
             indices_for_batch = []
-            for i in range(self.n_processes):
+            for j in range(self.n_processes):
 
-                batch_counter[i] += 1
+                batch_counter[j] += 1
 
                 # get correct indices for process
-                check = self.y_data[:, i] == 1
+                check = self.y_data[:, j] == 1
+
                 # prohibit creating batch if sample space is over
-                if batch_counter[i] * sub_batch_size > np.sum(check):
-                    batch_counter[i] = 0
+                if batch_counter[j] * sub_batch_size > np.sum(check):
+                    batch_counter[j] = 0
 
                 indices = np.where(check)[0]
 
@@ -248,8 +342,8 @@ class EventBatchSampler(data.Sampler):
                 indices_for_batch.append(
                     indices[
                         sub_batch_size
-                        * batch_counter[i] : sub_batch_size
-                        * (batch_counter[i] + 1)
+                        * batch_counter[j] : sub_batch_size
+                        * (batch_counter[j] + 1)
                     ]
                 )
 
@@ -259,6 +353,10 @@ class EventBatchSampler(data.Sampler):
             array = np.concatenate(indices_for_batch)
             np.random.shuffle(array)
             yield array
+
+            # arr_list.append(array)
+        # a = np.nditer(np.concatenate(arr_list))
+        # return a
 
 
 class MyPrintingCallback(Callback):
