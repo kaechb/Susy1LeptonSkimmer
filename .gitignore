@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 analyis/tmp/
+lightning_logs/
 
 # C extensions
 *.so

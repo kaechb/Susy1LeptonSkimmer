@@ -15,12 +15,17 @@ Then write a fileset directory as an input for coffea
 # class DownloadFilesWrapper(CampaignTask, law.WrapperTask):
 
 
-class WriteDatasets(AnalysisTask):
+class MakeFilesTask(AnalysisTask):
+    """
+    placeholder task to define common keywords
+    """
 
     directory_path = Parameter(
         default="/nfs/dust/cms/user/wiens/CMSSW/CMSSW_10_6_8/Skimming/2020_12_04/merged"
     )
 
+
+class WriteDatasets(MakeFilesTask):
     def output(self):
         return self.local_target("datasets_{}.json".format(self.year))
 
@@ -35,15 +40,17 @@ class WriteDatasets(AnalysisTask):
                 for r, d, f in os.walk(self.directory_path + "/" + directory):
                     for file in f:
                         file_list.append(directory + "/" + file)
+                from IPython import embed;embed()
                 file_dict.update({directory: file_list})  # self.directory_path + "/" +
 
-        with open(self.output().path, "w") as out:
-            json.dump(file_dict, out)
+        # with open(self.output().path, "w") as out:
+        #    json.dump(file_dict, out)
+        self.output().dump(file_dict)
 
 
-class WriteConfigData(AnalysisTask):
+class WriteConfigData(MakeFilesTask):
     def requires(self):
-        return WriteDatasets.req(self)
+        return WriteDatasets.req(self, directory_path=self.directory_path)
 
     def output(self):
         return self.local_target("datasets_{}.py".format(self.year))
@@ -96,14 +103,14 @@ class WriteConfigData(AnalysisTask):
                             out.write(line + "\n")
 
 
-class WriteFileset(AnalysisTask):
+class WriteFileset(MakeFilesTask):
 
     directory_path = Parameter(
         default="/nfs/dust/cms/user/wiens/CMSSW/CMSSW_10_6_8/Skimming/2020_12_04/merged"
     )
 
     def requires(self):
-        return WriteConfigData.req(self)
+        return WriteConfigData.req(self, directory_path=self.directory_path)
 
     def output(self):
         return self.local_target("fileset.json")

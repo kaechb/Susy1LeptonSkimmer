@@ -32,7 +32,6 @@ Collection of different standard task definition, each extending the dfinitions
 
 class BaseTask(law.Task):
     version = luigi.Parameter(default="dev1", description="version of current workflow")
-
     # notify = law.telegram.NotifyTelegramParameter()
 
     # exclude_params_req = {"notify"}
@@ -127,6 +126,7 @@ class DNNTask(ConfigTask):
 
     channel = luigi.Parameter(default="0b", description="channel to train on")
     epochs = luigi.IntParameter(default=100)
+    steps_per_epoch = luigi.IntParameter(default=100)
     batch_size = luigi.IntParameter(default=10000)
     learning_rate = luigi.FloatParameter(default=0.01)
     debug = luigi.BoolParameter(default=False)
@@ -270,9 +270,9 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.custom_content.append(("universe", "vanilla"))
         # require more RAM on CPU
         # config.custom_content.append(("request_cpus", "1"))
-        config.custom_content.append(("request_memory", "5000"))
+        config.custom_content.append(("request_memory", "20000"))
         # config.custom_content.append(("+RequestRuntime = 86400"))
-        # config.custom_content.append(("+RequestRuntime = 10*60*60"))
+        config.custom_content.append(("+RequestRuntime = 10*60*60"))
         # config.custom_content.append(("Request_GPUs", "0"))
         # config.custom_content.append(("Request_GpuMemory", "0"))
 
@@ -281,7 +281,6 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         config.stdout = "out.txt"
         config.stderr = "err.txt"
         config.log = "log.txt"
-        # from IPython import embed;embed()
         return config
 
     def htcondor_use_local_scheduler(self):

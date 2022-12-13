@@ -10,8 +10,13 @@ from coffea import processor
 from coffea.nanoevents import TreeMakerSchema, BaseSchema, NanoAODSchema
 import json
 import time
-import numpy as np
 from rich.console import Console
+import numpy as np
+import boost_histogram as bh
+import aghast
+import uproot
+import ROOT
+
 
 import logging
 
@@ -45,8 +50,11 @@ class TestDummy(DatasetTask, HTCondorWorkflow, law.LocalWorkflow):  # AnalysisTa
         # make the output directory
 
         print("\ndeeedledoo\n")
+        arr = np.random.normal(size=1_000_000)
         import time
+        from IPython import embed
 
+        embed()
         time.sleep(5)
         self.output().parent.touch()
 

@@ -27,6 +27,10 @@ mamba install -c conda-forge pytorch-lightning -y
 mamba install -c conda-forge law -y
 $DUST/Anaconda/envs/susy1lep/bin/pip install order
 mamba install -c conda-forge scikit-learn -y
+mamba install -c conda-forge mplhep -y
 mamba install -c conda-forge black -y
 mamba install -c conda-forge ipython -y
+mamba install -c conda-forge ipdb -y
+mamba install -c conda-forge aghast -y
+mamba install -c conda-forge root -y
  fi

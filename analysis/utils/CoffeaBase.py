@@ -15,6 +15,7 @@ from coffea.processor.accumulator import (
     column_accumulator,
     set_accumulator,
 )
+from coffea.processor.executor import WorkQueueExecutor
 
 # register our candidate behaviors
 # from coffea.nanoevents.methods import candidate
@@ -90,7 +91,7 @@ class BaseSelection:
 
     # common = ("energy", "x", "y", "z")  # , "pt", "eta")
     hl = (
-        "METPt",
+        "MetPt",
         "W_mt",
     )
 
@@ -111,6 +112,15 @@ class BaseSelection:
         )
 
     def arrays(self, X):
+        # var_list = []
+        # for var in self.config.variables.names():
+        # #if var == "jet_mass_1":
+        # #from IPython import embed;embed()
+        # #c = ak.zeros_like(X[var])
+        # a = ak.flatten(X[var], axis=None) # + c
+        # #print(var, a, len(a), len(X[var]))
+        # b = ak.to_numpy(a).astype(np.float32)
+        # var_list.append(b)
         # from IPython import embed;embed()
         return dict(
             # lep=self.obj_arrays(X["good_leptons"], 1, ("pdgId", "charge")),
@@ -124,6 +134,9 @@ class BaseSelection:
             ),
             # meta=X["event"].astype(np.int64),
         )
+        # print(var_list)
+        # from IPython import embed;embed()
+        # return dict(hl=np.stack(var_list, axis=1))
 
     def add_to_selection(self, selection, name, array):
         return selection.add(name, ak.to_numpy(array, allow_missing=True))
@@ -137,49 +150,53 @@ class BaseSelection:
         size = events.metadata["entrystop"] - events.metadata["entrystart"]
         weights = processor.Weights(size, storeIndividual=self.individal_weights)
 
+        from IPython import embed
+
         # branches = file.get("nominal")
         dataset = events.metadata["dataset"]
         output["n_events"][dataset] = size
         output["n_events"]["sum_all_events"] = size
 
         # access instances
+        # cheating for now with overwriting
+        # dataset = "TTJets_dilep"  # FIXME
         data = self.config.get_dataset(dataset)
         process = self.config.get_process(dataset)
 
         # print(process.name)
-        # from IPython import embed;embed()
 
         # leptons variables
-        n_leptons = events.nLepton
-        lead_lep_pt = events.LeptonPt[:, 0]
-        lead_lep_eta = events.LeptonEta[:, 0]
-        lead_lep_phi = events.LeptonPhi[:, 0]
-        # LeptonMass
-        # tight_lep = events.LeptonTightId[:, 0]
-        lep_charge = events.LeptonCharge
-        lep_pdgid = events.LeptonPdgId
+        n_leptons = ak.num(events.MuonPt)  # events.nMuon
+        lead_lep_pt = ak.fill_none(ak.firsts(events.MuonPt[:, 0:1]), 0)
+        lead_lep_eta = ak.fill_none(ak.firsts(events.MuonEta[:, 0:1]), 0)
+        lead_lep_phi = ak.fill_none(ak.firsts(events.MuonPhi[:, 0:1]), 0)
+        # MuonMass
+        # tight_lep = events.MuonTightId[:, 0:1]
+        lep_charge = events.MuonCharge
+        lep_pdgid = events.MuonPdgId
 
         # construct lepton veto mask
         # hacky: sort leptons around and then use the  == 2 case
         # veto_lepton = np.where(
-        # events.nLepton == 2
-        # ,ak.sort(events.LeptonPt, ascending=True) [:,0] < 10
+        # events.nMuon == 2
+        # ,ak.sort(events.MuonPt, ascending=True) [:,0] < 10
         # ,(n_leptons == 1)
         # )
-        two_lep = ak.mask(events.LeptonPt, (events.nLepton == 2))
-        veto_lepton = two_lep[:, 1] < 10
+        # two_lep = ak.mask(events.MuonPt, (events.nMuon == 2))
+        # veto_lepton = two_lep[:, 1] < 10
+        veto_lepton = events.MuonPt[:, 1:2] > 10
 
         """
         om gosh, that can be solved so much easier
         look at
         for i in range(500):
-            ...:     print(events.LeptonPt[:,1:2][i], events.LeptonPt[i])
-        events.LeptonPt[:,1:2] has only the second element, and if it doesnt exist, its empty
-        events.LeptonPt[:,1:2] > 10 produces [], False or True, as intended
+            ...:     print(events.MuonPt[:,1:2][i], events.MuonPt[i])
+        events.MuonPt[:,1:2] has only the second element, and if it doesnt exist, its empty
+        events.MuonPt[:,1:2] > 10 produces [], False or True, as intended
 
         works as well:
         cut=(n_leptons>0)
-        events.LeptonPt.mask[cut]
+        events.MuonPt.mask[cut]
 
         In you want to consider combinations of all good particles in each event, so there are functions for constructing that.
         ak.combinations(array.muons, 2).type
@@ -188,34 +205,44 @@ class BaseSelection:
 
         # from IPython import embed;embed()
         # APPLY TRIGGER!!! done before in c++?
-        # mu_trigger = events.HLT_IsoMu24
+        # mu_trigger = events.HLT__IsoMu24
 
         # muon selection
-        muon_selection = events.LeptonMediumId[:, 0] & (abs(lep_pdgid[:, 0]) == 13)
+        muon_selection = events.MuonMediumId[:, 0:1] & (abs(lep_pdgid[:, 0:1]) == 13)
         # ele selection
-        electron_selection = events.LeptonTightId[:, 0] & (abs(lep_pdgid[:, 0]) == 11)
+        electron_selection = events.MuonTightId[:, 0:1] & (abs(lep_pdgid[:, 0:1]) == 11)
 
         # lep selection
+
         lep_selection = (
-            (lead_lep_pt > 25)
-            & (veto_lepton | (events.nLepton == 1))
-            & (muon_selection | electron_selection)
+            lead_lep_pt
+            > 25
+            # & (veto_lepton | (events.nMuon == 1))
+            # & (muon_selection | electron_selection)
         )
+
+        """
+        b=ak.where(ak.num(lead_lep_phi) > 0, lead_lep_pt > 10, False)
+        ak.flatten(b, axis=None)
+        """
         self.add_to_selection(selection, "lep_selection", lep_selection)
 
         # jet variables
+        # embed()
         n_jets = events.nJet
-        n_btags = events.nMediumDFBTagJet  # 'nMediumCSVBTagJet' ?
-        jet_mass_1 = events.JetMass[:, 0]
-        jet_pt_1 = events.JetPt[:, 0]
+        n_btags = events.nDeepJetMediumBTag  # nMediumDFBTagJet  # 'nMediumCSVBTagJet' ?
+        jet_mass_1 = ak.fill_none(ak.firsts(events.JetMass[:, 0:1]), value=0)
+        jet_pt_1 = ak.fill_none(
+            ak.firsts(events.JetPt[:, 0:1]), value=0
+        )  # events.JetPt[:, 0:1]
         # unpack nested list, set not existing second jets to 0 -> depends on other cuts
         jet_pt_2 = ak.fill_none(ak.firsts(events.JetPt[:, 1:2]), value=0)
-        jet_eta_1 = events.JetEta[:, 0]
-        jet_phi_1 = events.JetPhi[:, 0]
+        jet_eta_1 = ak.fill_none(ak.firsts(events.JetEta[:, 0:1]), value=0)
+        jet_phi_1 = ak.fill_none(ak.firsts(events.JetPhi[:, 0:1]), value=0)
 
         # jest isolation selection
         jet_iso_sel = (
-            (events.IsoTrackHadronicDecay)
+            (events.IsoTrackIsHadronicDecay)
             & (events.IsoTrackPt > 10)
             & (events.IsoTrackMt2 < 60)
         )
@@ -224,7 +251,7 @@ class BaseSelection:
 
         # event variables
         # look at all possibilities with dir(events)
-        METPt = events.METPt
+        METPt = events.MetPt
         W_mt = events.WBosonMt
         Dphi = events.DeltaPhi
         LT = events.LT
@@ -257,70 +284,70 @@ class BaseSelection:
         # events.nGenMatchedW
 
         # add trigger selections
-        HLTLeptonOr = events.HLTLeptonOr
-        HLTMETOr = events.HLTMETOr
-        HLTElectronOr = events.HLTElectronOr
-        HLTMuonOr = events.HLTMuonOr
+        HLT_MuonOr = events.HLT_MuonOr
+        HLT_MetOr = events.HLT_MetOr
+        HLT_EleOr = events.HLT_EleOr
+        HLT_MuonOr = events.HLT_MuonOr
 
-        self.add_to_selection(selection, "HLTElectronOr", events.HLTElectronOr)
-        self.add_to_selection(selection, "HLTLeptonOr", events.HLTLeptonOr)
-        self.add_to_selection(selection, "HLTMETOr", events.HLTMETOr)
-        self.add_to_selection(selection, "HLTMuonOr", events.HLTMuonOr)
+        self.add_to_selection(selection, "HLT_EleOr", events.HLT_EleOr)
+        self.add_to_selection(selection, "HLT_MuonOr", events.HLT_MuonOr)
+        self.add_to_selection(selection, "HLT_MetOr", events.HLT_MetOr)
+        self.add_to_selection(selection, "HLT_MuonOr", events.HLT_MuonOr)
 
         # apply some weights,  MC/data check beforehand
         if not process.is_data:
             weights.add("x_sec", process.xsecs[13.0].nominal)
 
-            # some weights have more than weight, not always consistent
-            # take only first weight, since everything with more than 1 lep gets ejected
-
-            weights.add(
-                "LeptonSFTrigger",
-                events.LeptonSFTrigger[:, 0],
-                weightUp=events.LeptonSFTriggerUp[:, 0],
-                weightDown=events.LeptonSFTriggerDown[:, 0],
-            )
-
-            weights.add(
-                "LeptonSFIsolation",
-                events.LeptonSFIsolation[:, 0],
-                weightDown=events.LeptonSFIsolationDown[:, 0],
-                weightUp=events.LeptonSFIsolationUp[:, 0],
-            )
-
-            weights.add(
-                "LeptonSFMVA",
-                events.LeptonSFMVA[:, 0],
-                weightDown=events.LeptonSFMVADown[:, 0],
-                weightUp=events.LeptonSFMVAUp[:, 0],
-            )
-
-            weights.add(
-                "LeptonSFGSF",
-                events.LeptonSFGSF[:, 0],
-                weightDown=events.LeptonSFGSFDown[:, 0],
-                weightUp=events.LeptonSFGSFUp[:, 0],
-            )
-
-            weights.add(
-                "LeptonSFId",
-                events.LeptonSFId[:, 0],
-                weightDown=events.LeptonSFIdDown[:, 0],
-                weightUp=events.LeptonSFIdUp[:, 0],
-            )
-
-            weights.add(
-                "nISRWeight_Mar17",
-                events.nISRWeight_Mar17,
-                weightDown=events.nISRWeightDown_Mar17,
-                weightUp=events.nISRWeightDown_Mar17,
-            )
+            # # some weights have more than weight, not always consistent
+            # # take only first weight, since everything with more than 1 lep gets ejected
+            #
+            # weights.add(
+            # "MuonSFTrigger",
+            # events.MuonSFTrigger[:, 0:1],
+            # weightUp=events.MuonSFTriggerUp[:, 0:1],
+            # weightDown=events.MuonSFTriggerDown[:, 0:1],
+            # )
+            #
+            # weights.add(
+            # "MuonSFIsolation",
+            # events.MuonSFIsolation[:, 0:1],
+            # weightDown=events.MuonSFIsolationDown[:, 0:1],
+            # weightUp=events.MuonSFIsolationUp[:, 0:1],
+            # )
+            #
+            # weights.add(
+            # "MuonSFMVA",
+            # events.MuonSFMVA[:, 0:1],
+            # weightDown=events.MuonSFMVADown[:, 0:1],
+            # weightUp=events.MuonSFMVAUp[:, 0:1],
+            # )
+            #
+            # weights.add(
+            # "MuonSFGSF",
+            # events.MuonSFGSF[:, 0:1],
+            # weightDown=events.MuonSFGSFDown[:, 0:1],
+            # weightUp=events.MuonSFGSFUp[:, 0:1],
+            # )
+            #
+            # weights.add(
+            # "MuonSFId",
+            # events.MuonSFId[:, 0:1],
+            # weightDown=events.MuonSFIdDown[:, 0:1],
+            # weightUp=events.MuonSFIdUp[:, 0:1],
+            # )
+            #
+            # weights.add(
+            # "nISRWeight_Mar17",
+            # events.nISRWeight_Mar17,
+            # weightDown=events.nISRWeightDown_Mar17,
+            # weightUp=events.nISRWeightDown_Mar17,
+            # )
 
             # weights.add(
-            # 'PileUpWeight',
-            # events.PileUpWeight[:,0],
-            # weightDown=events.PileUpWeightMinus[:,0],
-            # weightUp=events.PileUpWeightPlus[:,0],
+            # "PileUpWeight",
+            # events.PileUpWeight[:, 0],
+            # weightDown=events.PileUpWeightDown[:, 0],
+            # weightUp=events.PileUpWeightUp[:, 0],
             # )
 
             # weights.add("JetMediumCSVBTagSF", events.JetMediumCSVBTagSF,
@@ -347,28 +374,35 @@ class BaseSelection:
         opposite charge with respect to the selected lepton is chosen.
         """
 
-        common = ["baseline_selection", "lep_selection", "HLTLeptonOr", "HLTMETOr"]
+        common = ["baseline_selection", "lep_selection", "HLT_MuonOr", "HLT_MetOr"]
+        # embed()
+        # signalRegion = events.signalRegion == 1
+        # controlRegion = events.signalRegion == 0
+        delta_phi_SR = events.DeltaPhi > 0.9
+        delta_phi_CR = events.DeltaPhi < 0.9
 
-        signalRegion = events.signalRegion == 1
-        controlRegion = events.signalRegion == 0
-        delta_phi = Dphi > 0.9
         # from IPython import embed;embed()
 
-        self.add_to_selection(selection, "signalRegion", signalRegion)
-        self.add_to_selection(selection, "controlRegion", controlRegion)
-        self.add_to_selection(selection, "delta_phi", delta_phi)
+        # self.add_to_selection(selection, "signalRegion", signalRegion)
+        # self.add_to_selection(selection, "controlRegion", controlRegion)
+        self.add_to_selection(selection, "delta_phi_SR", delta_phi_SR)
+        self.add_to_selection(selection, "delta_phi_CR", delta_phi_CR)
         # if you need to add more options
         # signal_region = ["signalRegion"]
         # control_region = ["controlRegion"]
 
         categories = dict(
             # N0b_SR=common + ["zero_b", "signalRegion"],
-            N1b_SR=common + ["multi_b", "signalRegion"],
+            N1b_SR=common + ["multi_b", "delta_phi_SR"],
             # N0b_CR=common + ["zero_b", "controlRegion"],
-            N1b_CR=common + ["multi_b", "controlRegion"],
+            N1b_CR=common + ["multi_b", "delta_phi_CR"],
         )
 
         return locals()
+
+
+# turning off progress bar
+# class BaseWorkQueueExecutor(WorkQueueExecutor):
 
 
 class array_accumulator(column_accumulator):
@@ -438,17 +472,17 @@ class Histogramer(BaseProcessor, BaseSelection):
         output = self.accumulator.identity()
         out = self.select(events)
         weights = out["weights"]
-
         for var_name in self.variables().names():
             for cat in out["categories"].keys():
                 weight = weights.weight()
                 # value = out[var_name]
                 # generate blank mask for variable values
                 mask = np.ones(len(out[var_name]), dtype=bool)
-
+                # from IPython import embed;embed()
                 # combine cuts together: problem, some have None values
-                for cut in out["categories"][cat]:
-                    # rint(cut, "\n")
+                for cut in out["categories"][cat][:1]:  # FIXME
+                    # print(cut, "\n")
+
                     cut_mask = ak.to_numpy(out[cut])
                     if type(cut_mask) is np.ma.core.MaskedArray:
                         cut_mask = cut_mask.mask
@@ -463,12 +497,15 @@ class Histogramer(BaseProcessor, BaseSelection):
                 values = {}
                 values["dataset"] = out["dataset"]
                 values["category"] = cat
-                values[var_name] = out[var_name][mask]
+                # we just want to hist every entry so flatten works since we don't wont to deal with nested array structures
+                values[var_name] = ak.flatten(out[var_name][mask], axis=None)
                 # weight = weights.weight()[cut]
                 values["weight"] = weight[mask]
+                # if var_name == 'jet_mass_1' and cat == 'N1b_SR':
+                #    from IPython import embed;embed()
                 output["histograms"][var_name].fill(**values)
 
-        # output["n_events"] = len(METPt)
+        # output["n_events"] = len(MetPt)
         return output
 
     def postprocess(self, accumulator):
@@ -482,7 +519,6 @@ class ArrayExporter(BaseProcessor, BaseSelection):
 
     def __init__(self, task):
         super().__init__(task)
-
         self._accumulator["arrays"] = dict_accumulator()
 
     # def arrays(self, select_output):
