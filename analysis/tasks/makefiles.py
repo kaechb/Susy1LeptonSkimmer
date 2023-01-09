@@ -35,7 +35,7 @@ class WriteDatasets(MakeFilesTask):
         }
 
     def run(self):
-        #from IPython import embed;embed()
+        # from IPython import embed;embed()
         self.output()["dataset_dict"].parent.touch()
         file_dict = {}
         for root, dirs, files in os.walk(self.directory_path):

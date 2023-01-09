@@ -239,7 +239,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
     def create_branch_map(self):
         # trivial branch map: one branch per file
-        n = 10 # len(self.config_inst.datasets)
+        n = 10  # len(self.config_inst.datasets)
         # dividde workload
         n = n * 1
         if self.debug:

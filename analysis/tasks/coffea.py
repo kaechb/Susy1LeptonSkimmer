@@ -23,6 +23,7 @@ class CoffeaTask(DatasetTask):
     """
     token task to define attributes
     """
+
     processor = Parameter(default="ArrayExporter")
     debug = BoolParameter(default=False)
     debug_dataset = Parameter(
@@ -39,8 +40,7 @@ class CoffeaTask(DatasetTask):
 
 class CoffeaProcessor(
     CoffeaTask, HTCondorWorkflow, law.LocalWorkflow
-    ):  # AnalysisTask):
-
+):  # AnalysisTask):
 
     """
     this is a HTCOndor workflow, normally it will get submitted with configurations defined
@@ -176,7 +176,6 @@ class CoffeaProcessor(
 
 
 class SubmitCoffeaPerDataset(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
-
     def create_branch_map(self):
         # from IPython import embed; embed()
         # return a job for every dataset that has to be processed
@@ -210,8 +209,10 @@ class SubmitCoffeaPerDataset(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
         # test_file = "/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2022_11_24/2017/Data/root/SingleElectron_Run2017C-UL2017_MiniAODv2_NanoAODv9-v1_NANOAOD_1.0.root"
 
         # test_dict = {"TTJets_sl_fromt": [test_file]}
-        test_dict = self.input()["dataset_dict"].load()#["SingleMuon"]  # {self.dataset: [self.file]}
-        data_path = self.input()['dataset_path'].load()
+        test_dict = self.input()[
+            "dataset_dict"
+        ].load()  # ["SingleMuon"]  # {self.dataset: [self.file]}
+        data_path = self.input()["dataset_path"].load()
 
         # at some point, we have to select which dataset to process
         good_file_numbers = ["105", "106"]
@@ -221,29 +222,27 @@ class SubmitCoffeaPerDataset(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
             if key != "SingleMuon":
                 continue
             for file in test_dict[key]:
-                #if not "105" in file and not "106" in file:
+                # if not "105" in file and not "106" in file:
                 if not good_file_numbers[self.branch]:
                     continue
                 if not "Run2017C" in file:
                     continue
                 print("loopdaloop")
                 # defining how to convert dataset names
-                data_dict = {
-                    'SingleMuon' : "data_mu_C"
-                }
+                data_dict = {"SingleMuon": "data_mu_C"}
                 # define coffea Processor instance for this one dataset
                 cof_proc = CoffeaProcessor.req(
                     self,
                     processor=self.processor,  # "ArrayExporter",
                     debug=True,
                     debug_dataset=data_dict[key],
-                    debug_str=data_path + "/" +  file,
+                    debug_str=data_path + "/" + file,
                     # no_poll=True,  #just submit, do not initiate status polling
                     workflow="local",
                 )
                 # find output of the coffea processor
-                #from IPython import embed; embed()
-                #out_target = cof_proc.localize_output().args[0]["collection"].targets[0]
+                # from IPython import embed; embed()
+                # out_target = cof_proc.localize_output().args[0]["collection"].targets[0]
                 out_target = cof_proc.localize_output().args[0]
 
                 # unpack Localfiletargers, since json dump wont work otherwise
@@ -269,9 +268,7 @@ class SubmitCoffeaPerDataset(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
         #    json.dump(joblist, file)
 
 
-
 class CollectCoffeaOutput(CoffeaTask):
-
     def requires(self):
         return SubmitCoffeaPerDataset.req(
             self, dataset=self.debug_dataset, processor=self.processor
