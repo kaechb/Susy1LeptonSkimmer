@@ -27,11 +27,16 @@ class MakeFilesTask(AnalysisTask):
 
 class WriteDatasets(MakeFilesTask):
     def output(self):
-        return self.local_target("datasets_{}.json".format(self.year))
+        return {
+            "dataset_dict": self.local_target("datasets_{}.json".format(self.year)),
+            "dataset_path": self.local_target(
+                "path.json"
+            ),  # save this so you'll find the files
+        }
 
     def run(self):
-        self.output().parent.touch()
-
+        #from IPython import embed;embed()
+        self.output()["dataset_dict"].parent.touch()
         file_dict = {}
         for root, dirs, files in os.walk(self.directory_path):
             for directory in dirs:
@@ -40,12 +45,12 @@ class WriteDatasets(MakeFilesTask):
                 for r, d, f in os.walk(self.directory_path + "/" + directory):
                     for file in f:
                         file_list.append(directory + "/" + file)
-                from IPython import embed;embed()
                 file_dict.update({directory: file_list})  # self.directory_path + "/" +
 
         # with open(self.output().path, "w") as out:
         #    json.dump(file_dict, out)
-        self.output().dump(file_dict)
+        self.output()["dataset_dict"].dump(file_dict)
+        self.output()["dataset_path"].dump(self.directory_path)
 
 
 class WriteConfigData(MakeFilesTask):

@@ -19,17 +19,28 @@ from utils.CoffeaBase import *
 from tasks.makefiles import WriteFileset, WriteDatasets
 
 
-class CoffeaProcessor(
-    DatasetTask, HTCondorWorkflow, law.LocalWorkflow
-):  # AnalysisTask):
+class CoffeaTask(DatasetTask):
+    """
+    token task to define attributes
+    """
     processor = Parameter(default="ArrayExporter")
     debug = BoolParameter(default=False)
     debug_dataset = Parameter(
-        default="TTZ_qq"
+        default="data_mu_C"
     )  # take a small set to reduce computing time
     debug_str = Parameter(
         default="/nfs/dust/cms/user/wiens/CMSSW/CMSSW_12_1_0/Testing/2022_11_10/TTJets/TTJets_1.root"
     )
+    file = Parameter(
+        default="/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2022_11_24/2017/Data/root/SingleElectron_Run2017C-UL2017_MiniAODv2_NanoAODv9-v1_NANOAOD_1.0.root"
+        # "/nfs/dust/cms/user/wiens/CMSSW/CMSSW_12_1_0/Testing/2022_11_10/TTJets/TTJets_1.root"
+    )
+
+
+class CoffeaProcessor(
+    CoffeaTask, HTCondorWorkflow, law.LocalWorkflow
+    ):  # AnalysisTask):
+
 
     """
     this is a HTCOndor workflow, normally it will get submitted with configurations defined
@@ -61,6 +72,7 @@ class CoffeaProcessor(
             for dat in datasets
             for cat in self.config_inst.categories.names()
         }
+        # overwrite array export logic if we want to histogram
         if self.processor == "Histogramer":
             out = self.local_target("hists.coffea")
         return out
@@ -143,7 +155,6 @@ class CoffeaProcessor(
         toc = time.time()
         # print(np.round(toc - tic, 2), "s")
 
-        # from IPython import embed;embed()
         total_time = toc - tic
         console.print("\n[u][bold magenta]Summary metrics:[/bold magenta][/u]")
         console.print(f"* Total time: {total_time:.2f}s")
@@ -152,7 +163,6 @@ class CoffeaProcessor(
 
         # save outputs
         # seperated for processor, both need different touch calls
-
         if self.processor == "ArrayExporter":
             self.output().popitem()[1].parent.touch()
             for cat in out["arrays"]:
@@ -165,29 +175,14 @@ class CoffeaProcessor(
             self.output().dump(out["histograms"])
 
 
-class SubmitCoffeaPerDataset(DatasetTask):
+class SubmitCoffeaPerDataset(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
 
-    file = Parameter(
-        default="/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2022_11_24/2017/Data/root/SingleElectron_Run2017C-UL2017_MiniAODv2_NanoAODv9-v1_NANOAOD_1.0.root"
-        # "/nfs/dust/cms/user/wiens/CMSSW/CMSSW_12_1_0/Testing/2022_11_10/TTJets/TTJets_1.root"
-    )
-    processor = Parameter(default="ArrayExporter")
-    debug = BoolParameter(default=False)
+    def create_branch_map(self):
+        # from IPython import embed; embed()
+        # return a job for every dataset that has to be processed
+        return list(range(2))
 
     def requires(self):
-        # return CoffeaProcessor.req(self, processor="ArrayExporter")
-
-        # return CoffeaProcessor.req(
-        # self,
-        # processor= "ArrayExporter",
-        # debug=True,
-        # debug_dataset=self.dataset,
-        # debug_str=self.file,
-        # #no_poll=True,
-        # #workflow="local",
-        # )
-
-        # return WriteFileset.req(self)
         return WriteDatasets.req(self)
 
     def output(self):
@@ -215,29 +210,45 @@ class SubmitCoffeaPerDataset(DatasetTask):
         # test_file = "/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2022_11_24/2017/Data/root/SingleElectron_Run2017C-UL2017_MiniAODv2_NanoAODv9-v1_NANOAOD_1.0.root"
 
         # test_dict = {"TTJets_sl_fromt": [test_file]}
-        test_dict = self.input().load() # {self.dataset: [self.file]}
+        test_dict = self.input()["dataset_dict"].load()#["SingleMuon"]  # {self.dataset: [self.file]}
+        data_path = self.input()['dataset_path'].load()
 
-        from IPython import embed; embed()
+        # at some point, we have to select which dataset to process
+        good_file_numbers = ["105", "106"]
+
         # doing a loop for each small file on the naf
         for key in test_dict.keys():
+            if key != "SingleMuon":
+                continue
             for file in test_dict[key]:
+                #if not "105" in file and not "106" in file:
+                if not good_file_numbers[self.branch]:
+                    continue
+                if not "Run2017C" in file:
+                    continue
                 print("loopdaloop")
+                # defining how to convert dataset names
+                data_dict = {
+                    'SingleMuon' : "data_mu_C"
+                }
                 # define coffea Processor instance for this one dataset
-                cof_proc = CoffeaProcessor(
+                cof_proc = CoffeaProcessor.req(
                     self,
                     processor=self.processor,  # "ArrayExporter",
                     debug=True,
-                    debug_dataset=key,
-                    debug_str=file,
+                    debug_dataset=data_dict[key],
+                    debug_str=data_path + "/" +  file,
                     # no_poll=True,  #just submit, do not initiate status polling
                     workflow="local",
                 )
                 # find output of the coffea processor
-                out_target = cof_proc.localize_output().args[0]["collection"].targets[0]
+                #from IPython import embed; embed()
+                #out_target = cof_proc.localize_output().args[0]["collection"].targets[0]
+                out_target = cof_proc.localize_output().args[0]
 
                 # unpack Localfiletargers, since json dump wont work otherwise
                 if self.processor == "ArrayExporter":
-                    for path in out_target:
+                    for path in out_target.keys():
                         out_target[path] = out_target[path].path
 
                 if self.processor == "Histogramer":
@@ -252,21 +263,14 @@ class SubmitCoffeaPerDataset(DatasetTask):
                 # run = cof_proc.run()
                 # from IPython import embed; embed()
                 test = yield cof_proc
+                self.output().dump(joblist)
 
         # with open(self.output().path, "w") as file:
         #    json.dump(joblist, file)
-        self.output().dump(joblist)
 
 
-class CollectCoffeaOutput(DatasetTask):
-    processor = Parameter(default="ArrayExporter")
-    debug = BoolParameter(default=False)
-    debug_dataset = Parameter(
-        default="data_e_C"
-    )  # take a small set to reduce computing time
-    debug_str = Parameter(
-        default="/nfs/dust/cms/user/wiens/CMSSW/CMSSW_12_1_0/Testing/2022_11_10/TTJets/TTJets_1.root"
-    )
+
+class CollectCoffeaOutput(CoffeaTask):
 
     def requires(self):
         return SubmitCoffeaPerDataset.req(
@@ -281,11 +285,12 @@ class CollectCoffeaOutput(DatasetTask):
     @law.decorator.timeit(publish_message=True)
     @law.decorator.safe_output
     def run(self):
-        print(self.input())
-        a = self.input().load()
         from IPython import embed
 
         embed()
+
+        print(self.input())
+        a = self.input().load()
         b = a[
             "data_e_C_/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2022_11_24/2017/Data/root/SingleElectron_Run2017C-UL2017_MiniAODv2_NanoAODv9-v1_NANOAOD_1.0.root"
         ]["N1b_SR_data_e_C"]

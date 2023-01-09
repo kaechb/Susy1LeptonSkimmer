@@ -150,8 +150,6 @@ class BaseSelection:
         size = events.metadata["entrystop"] - events.metadata["entrystart"]
         weights = processor.Weights(size, storeIndividual=self.individal_weights)
 
-        from IPython import embed
-
         # branches = file.get("nominal")
         dataset = events.metadata["dataset"]
         output["n_events"][dataset] = size
@@ -159,7 +157,8 @@ class BaseSelection:
 
         # access instances
         # cheating for now with overwriting
-        # dataset = "TTJets_dilep"  # FIXME
+        # dataset = "data_mu_B"  # FIXME
+        #from IPython import embed;embed()
         data = self.config.get_dataset(dataset)
         process = self.config.get_process(dataset)
 
@@ -264,7 +263,7 @@ class BaseSelection:
         )  # ak.sort(events.JetPt, ascending=False)
 
         baseline_selection = (
-            # (lead_lep_pt > 25)
+            (lead_lep_pt > 25)
             # &veto lepton > 10
             # &No isolated track with p T ≥ 10 GeV and M T2 < 60 GeV (80 GeV) for hadronic (leptonic)
             (sorted_jets[:, 1] > 80)
