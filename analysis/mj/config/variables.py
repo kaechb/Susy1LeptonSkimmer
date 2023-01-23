@@ -52,6 +52,30 @@ def setup_variables(cfg):
         x_title="Number of Jets",
     )
 
+    cfg.add_variable(
+        name="n_b_jets",
+        expression="n_b_jets",
+        binning=(10, 0, 10),
+        # unit="",
+        x_title="Number of b Jets",
+    )
+
+    cfg.add_variable(
+        name="n_t_tags",
+        expression="n_t_tags",
+        binning=(10, 0, 10),
+        # unit="",
+        x_title="Number of top tagged fat jets",
+    )
+
+    cfg.add_variable(
+        name="n_W_tags",
+        expression="n_W_tags",
+        binning=(10, 0, 10),
+        # unit="",
+        x_title="Number of W tagged fat jets",
+    )
+
     # lepton stuff ###############
     cfg.add_variable(
         name="lead_lep_pt",

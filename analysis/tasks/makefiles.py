@@ -21,7 +21,8 @@ class MakeFilesTask(AnalysisTask):
     """
 
     directory_path = Parameter(
-        default="/nfs/dust/cms/user/wiens/CMSSW/CMSSW_10_6_8/Skimming/2020_12_04/merged"
+        default="/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2023_01_18/2017/Data/root"
+        # "/nfs/dust/cms/user/wiens/CMSSW/CMSSW_10_6_8/Skimming/2020_12_04/merged"
     )
 
 
@@ -32,6 +33,7 @@ class WriteDatasets(MakeFilesTask):
             "dataset_path": self.local_target(
                 "path.json"
             ),  # save this so you'll find the files
+            "job_number_dict": self.local_target("job_number_dict.json"),
         }
 
     def run(self):
@@ -47,10 +49,17 @@ class WriteDatasets(MakeFilesTask):
                         file_list.append(directory + "/" + file)
                 file_dict.update({directory: file_list})  # self.directory_path + "/" +
 
+        # print amount of files per dataset
+        job_number_dict = {}
+        for k in file_dict.keys():
+            print(k, len(file_dict[k]))
+            job_number_dict.update({k: len(file_dict[k])})
+
         # with open(self.output().path, "w") as out:
         #    json.dump(file_dict, out)
         self.output()["dataset_dict"].dump(file_dict)
         self.output()["dataset_path"].dump(self.directory_path)
+        self.output()["job_number_dict"].dump(job_number_dict)
 
 
 class WriteConfigData(MakeFilesTask):

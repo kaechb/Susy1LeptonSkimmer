@@ -54,6 +54,22 @@ def setup_variables(cfg):
 
     # lepton stuff ###############
     cfg.add_variable(
+        name="n_muon",
+        expression="n_muon",
+        binning=(10, 0, 10),
+        # unit="",
+        x_title="Number of Muons",
+    )
+
+    cfg.add_variable(
+        name="n_electron",
+        expression="n_electron",
+        binning=(20, 0, 20),
+        # unit="",
+        x_title="Number of Electrons",
+    )
+
+    cfg.add_variable(
         name="lead_lep_pt",
         expression="lead_lep_pt",
         binning=(100, 0, 1000),

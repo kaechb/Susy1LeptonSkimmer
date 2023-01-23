@@ -3,31 +3,47 @@
 
 def setup_categories(cfg):
 
-    N0b_SR = cfg.add_category(
-        "N0b_SR",
-        label="0 btagged jets, signal region",
-        label_short="0 btag, SR",
-        aux={"fit": True, "fit_variable": "jet1_pt"},
-    )
-    N1b_SR = cfg.add_category(
-        "N1b_SR",
-        label="1i btagged jet, signal region",
-        label_short="1i btag, SR",
+    N0b = cfg.add_category(
+        "N0b",
+        label="0 btagged jets",
+        label_short="0 btag",
         aux={"fit": True, "fit_variable": "jet1_pt"},
     )
 
-    N0b_CR = cfg.add_category(
-        "N0b_CR",
-        label="0 btagged jets, control region",
-        label_short="0 btag, CR",
+    N1ib = cfg.add_category(
+        "N1ib",
+        label="1i btagged jets",
+        label_short="1i btag",
         aux={"fit": True, "fit_variable": "jet1_pt"},
     )
-    N1b_CR = cfg.add_category(
-        "N1b_CR",
-        label="1i btagged jet, control region",
-        label_short="1i btag, CR",
-        aux={"fit": True, "fit_variable": "jet1_pt"},
-    )
+
+    # N0b_SR = cfg.add_category(
+    # "N0b_SR",
+    # label="0 btagged jets, signal region",
+    # label_short="0 btag, SR",
+    # aux={"fit": True, "fit_variable": "jet1_pt"},
+    # )
+    # # N1b_SR = cfg.add_category(
+    # # "N1b_SR",
+    # # label="1i btagged jet, signal region",
+    # # label_short="1i btag, SR",
+    # # aux={"fit": True, "fit_variable": "jet1_pt"},
+    # # )
+
+
+#
+# N0b_CR = cfg.add_category(
+# "N0b_CR",
+# label="0 btagged jets, control region",
+# label_short="0 btag, CR",
+# aux={"fit": True, "fit_variable": "jet1_pt"},
+# )
+# N1b_CR = cfg.add_category(
+# "N1b_CR",
+# label="1i btagged jet, control region",
+# label_short="1i btag, CR",
+# aux={"fit": True, "fit_variable": "jet1_pt"},
+# )
 
 
 """
