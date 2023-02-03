@@ -12,6 +12,7 @@ import time
 import numpy as np
 import uproot as up
 from rich.console import Console
+from tqdm import tqdm
 
 # other modules
 from tasks.basetasks import DatasetTask, HTCondorWorkflow
@@ -37,14 +38,17 @@ class CoffeaTask(DatasetTask):
         # "/nfs/dust/cms/user/wiens/CMSSW/CMSSW_12_1_0/Testing/2022_11_10/TTJets/TTJets_1.root"
     )
     job_number = IntParameter(default=1)
-
+    data_key = Parameter(default="SingleMuon")
+    # parameter with selection we use coffea
+    lepton_selection = Parameter(default="Muon")
+    job_dict = {"SingleElectron": 2,# 236,
+    "MET": 2,#276,
+    "SingleMuon": 2#, 414}
+    }
 
 class CoffeaProcessor(
     CoffeaTask, HTCondorWorkflow, law.LocalWorkflow
 ):  # AnalysisTask):
-    lepton_key = Parameter(default="SingleMuon")
-    # parameter with selection we use coffea
-    lepton_selection = Parameter(default="Muon")
 
     """
     this is a HTCOndor workflow, normally it will get submitted with configurations defined
@@ -86,7 +90,7 @@ class CoffeaProcessor(
         return out
 
     def store_parts(self):
-        parts = (self.analysis_choice, self.processor, self.lepton_selection)
+        parts = (self.analysis_choice, self.processor, self.data_key, self.lepton_selection)
         if self.debug:
             parts += (
                 "debug",
@@ -132,15 +136,15 @@ class CoffeaProcessor(
         # unneccessary for now, good pdractice if we want to add utility later
         lepton_dict = {
             "SingleElectron": "data_e_",
-            "MET": "MET",
+            "MET": "data_MET_",
             "SingleMuon": "data_mu_",
         }
 
         # building together the respective strings to use for the coffea call
-        treename = "LeptonIncl"
-        subset = sorted(data_dict[self.lepton_key])
+        treename = self.lepton_selection
+        subset = sorted(data_dict[self.data_key])
         dataset = (
-            lepton_dict[self.lepton_key]
+            lepton_dict[self.data_key]
             + subset[self.branch].split("Run" + self.year)[1][0]
         )
         fileset = {dataset: [data_path + "/" + subset[self.branch]]}
@@ -155,6 +159,7 @@ class CoffeaProcessor(
         # , metrics
         tic = time.time()
         # call imported processor, magic happens here
+        print(fileset)
         out = processor.run_uproot_job(
             fileset,
             treename=treename,
@@ -279,7 +284,7 @@ class SubmitCoffeaPerDataset(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
                 self,
                 processor=self.processor,  # "ArrayExporter",
                 job_number=job_number_dict[key],
-                lepton_key=key,
+                data_key=key,
                 # debug=True,
                 # debug_dataset=dataset,  # data_dict[key],
                 # debug_str=data_path + "/" + file,
@@ -314,161 +319,265 @@ class SubmitCoffeaPerDataset(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
         #    json.dump(joblist, file)
 
 
-class CollectCoffeaOutput(CoffeaTask):
-    def requires(self):
+# class CollectCoffeaOutput(CoffeaTask):
+    # def requires(self):
+        # # return SubmitCoffeaPerDataset.req(
+            # # self,
+            # # dataset=self.debug_dataset,
+            # # processor=self.processor,
+            # # job_number=self.job_number,
+        # # )
+        # return {
+            # "{}_{}".format(sel, dat) :
+                # CoffeaProcessor.req(
+                # self,
+                # data_key = dat,
+                # lepton_selection= sel,
+                # job_number =1,#self.job_dict[dat],
+                # workflow="local",
+            # )
+            # for sel in ["Muon", "Electron"]
+            # for dat in ["SingleMuon", "MET", "SingleElectron"]
+        # }
+#
+    # def output(self):
+        # return self.local_target("event_counts.json")
+#
+    # def store_parts(self):
+        # return super(CollectCoffeaOutput, self).store_parts() + (self.analysis_choice,)
+#
+    # @law.decorator.timeit(publish_message=True)
+    # @law.decorator.safe_output
+    # def run(self):
+        # in_dict = self.input()#["collection"].targets
+#
+        # # making clear which index belongs to which variable
+        # var_names = self.config_inst.variables.names()
+        # print(var_names)
+        # event_counts = {}
+        # # iterate over the indices for each file
+        # for key, value in in_dict.items():
+            # tot_events, signal_events = 0, 0
+            # np_dict = value["collection"].targets[0]
+            # # different key for each file, we ignore it for now, only interested in values
+            # for i in tqdm(range(len(np_dict)//2)):
+#
+                # np_0b = np.load(np_dict["job_{}_N0b".format(i)].path)
+#
+                # LT = np_0b[:, var_names.index("LT")]
+                # HT = np_0b[:, var_names.index("HT")]
+                # n_jets = np_0b[:, var_names.index("n_jets")]
+#
+                # tot_events += len(np_0b)
+                # signal_events += len(np_0b[(LT > 250) & (HT > 500) & (n_jets > 4)])
+#
+            # count_dict = {key: {
+                # "tot_events": tot_events,
+                # "signal_events": signal_events,
+            # }}
+            # print(count_dict)
+            # event_counts.update(count_dict)
+        # #print(event_counts)ä
+        # self.output().dump(event_counts)
+        # #from IPython import embed; embed()
+
+ class CollectCoffeaOutput(CoffeaTask):
+     def requires(self):
         return SubmitCoffeaPerDataset.req(
             self,
             dataset=self.debug_dataset,
             processor=self.processor,
             job_number=self.job_number,
         )
+        # return SubmitCoffeaPerDataset.req(
+            # self,
+            # dataset=self.debug_dataset,
+            # processor=self.processor,
+            # job_number=self.job_number,
+        # )
+        return {
+            "{}_{}".format(sel, dat) :
+                CoffeaProcessor.req(
+                self,
+                data_key = dat,
+                lepton_selection= sel,
+                job_number =1,#self.job_dict[dat],
+                workflow="local",
+            )
+            for sel in ["Muon", "Electron"]
+            for dat in ["SingleMuon", "MET", "SingleElectron"]
+        }
 
     # def output(self):
+    def output(self):
+        return self.local_target("event_counts.json")
 
-    def store_parts(self):
-        return super(GroupCoffeaProcesses, self).store_parts() + (self.analysis_choice,)
+     def store_parts(self):
+        return super(CollectCoffeaOutput, self).store_parts() + (self.analysis_choice,)
 
-    @law.decorator.timeit(publish_message=True)
-    @law.decorator.safe_output
-    def run(self):
-        in_dict = self.input()["collection"].targets
+     @law.decorator.timeit(publish_message=True)
+     @law.decorator.safe_output
+     def run(self):
+        in_dict = self.input()#["collection"].targets
 
-        # making clear which index belongs to which variable
+         # making clear which index belongs to which variable
         var_names = self.config_inst.variables.names()
         print(var_names)
-        signal_events = 0
+        #signal_events = 0
+        event_counts = {}
         # iterate over the indices for each file
-        for i in in_dict:
-            np_dict = in_dict[i].load()
-            # different key for each file, we ignore it for now, only interested in values
-            for key, value in np_dict.items():
-                # from IPython import embed; embed()
-                dataset = "data_mu_" + key.split("Run" + self.year)[1][0]
-
-                np_0b = np.load(value["N0b_" + dataset])
-                np_1ib = np.load(value["N1ib_" + dataset])
-
-            Dphi = np_0b[:, var_names.index("Dphi")]
-            LT = np_0b[:, var_names.index("LT")]
-            HT = np_0b[:, var_names.index("HT")]
-            n_jets = np_0b[:, var_names.index("n_jets")]
-
-            # at some point, we have to define the signal regions
-            LT1_nj5 = np_0b[
-                (LT > 250) & (LT < 450) & (Dphi > 1) & (HT > 500) & (n_jets == 5)
-            ]
-            LT1_nj67 = np_0b[
-                (LT > 250)
-                & (LT < 450)
-                & (Dphi > 1)
-                & (HT > 500)
-                & (n_jets > 5)
-                & (n_jets < 8)
-            ]
-            LT1_nj8i = np_0b[
-                (LT > 250) & (LT < 450) & (Dphi > 1) & (HT > 500) & (n_jets > 7)
-            ]
-
-            LT2_nj5 = np_0b[
-                (LT > 450) & (LT < 650) & (Dphi > 0.75) & (HT > 500) & (n_jets == 5)
-            ]
-            LT2_nj67 = np_0b[
-                (LT > 450)
-                & (LT < 650)
-                & (Dphi > 0.75)
-                & (HT > 500)
-                & (n_jets > 5)
-                & (n_jets < 8)
-            ]
-            LT2_nj8i = np_0b[
-                (LT > 450) & (LT < 650) & (Dphi > 0.75) & (HT > 500) & (n_jets > 7)
-            ]
-
-            LT3_nj5 = np_0b[(LT > 650) & (Dphi > 0.75) & (HT > 500) & (n_jets == 5)]
-            LT3_nj67 = np_0b[
-                (LT > 650) & (Dphi > 0.75) & (HT > 500) & (n_jets > 5) & (n_jets < 8)
-            ]
-            LT3_nj8i = np_0b[(LT > 650) & (Dphi > 0.75) & (HT > 500) & (n_jets > 7)]
-
-            signal_events += (
-                len(LT1_nj5)
-                + len(LT1_nj67)
-                + len(LT1_nj8i)
-                + len(LT2_nj5)
-                + len(LT2_nj67)
-                + len(LT2_nj8i)
-                + len(LT3_nj5)
-                + len(LT3_nj67)
-                + len(LT3_nj8i)
-            )
-
-        from IPython import embed
-
-        embed()
-
-
-class GroupCoffeaProcesses(DatasetTask):
-
-    """
-    Task to group coffea hist together if needed (e.g. get rid of an axis)
-    Or reproduce root files for Combine
-    """
-
-    # histogram naming template:
-    template = "{variable}_{process}_{category}"
-
-    def requires(self):
-        return CoffeaProcessor.req(self, processor="Histogramer")
-
-    def output(self):
-        return self.local_target("legacy_hists.root")
-        # return dict(
-        #    coffea=self.local_target("legacy_hists.coffea"),
-        #    root=self.local_target("legacy_hists.root"),
-        # )
-
-    def store_parts(self):
-        return super(GroupCoffeaProcesses, self).store_parts() + (self.analysis_choice,)
-
-    @law.decorator.timeit(publish_message=True)
-    @law.decorator.safe_output
-    def run(self):
-
-        import uproot3 as up3
-
-        # needed for newtrees
-        # hists = coffea.util.load(self.input().path)
-        hists = self.input()["collection"][0].load()
-
-        datasets = self.config_inst.datasets.names()
-        categories = self.config_inst.categories.names()
-
-        # create dir and write coffea to root hists
-        self.output().parent.touch()
-        with up3.recreate(self.output().path) as root_file:
-            var_keys = hists.keys()
-            # var1='METPt'
-            for var in var_keys:
-                for dat in datasets:
-                    for cat in categories:
-
-                        # hacky way to get the hidden array of dict values
-                        # arr=list(hists[var1][('TTJets_sl_fromt','N1b_CR')].values())[0]
-
-                        # root_file[categories[0]] = up3.newtree({self.template.format(variable=var1, process=datasets[0], category=categories[0]):np.float64})
-                        # root_file[categories[0]].extend({self.template.format(variable=var1, process=datasets[0], category=categories[0]):arr})
-
-                        hist_name = self.template.format(
-                            variable=var, process=dat, category=cat
-                        )
-                        if "data" in dat:
-                            hist_name = self.template.format(
-                                variable=var, process="data_obs", category=cat
-                            )
-
-                        # from IPython import embed;embed()
-                        root_file[hist_name] = coffea.hist.export1d(
-                            hists[var][(dat, cat)].project(var)
-                        )
-
-                        # cutflow variable may have to be an exception
+        for key, value in in_dict.items():
+            tot_events, signal_events = 0, 0
+            np_dict = value["collection"].targets[0]
+             # different key for each file, we ignore it for now, only interested in values
+-            for key, value in np_dict.items():
+-                # from IPython import embed; embed()
+-                dataset = "data_mu_" + key.split("Run" + self.year)[1][0]
+-
+-                np_0b = np.load(value["N0b_" + dataset])
+-                np_1ib = np.load(value["N1ib_" + dataset])
+-
+-            Dphi = np_0b[:, var_names.index("Dphi")]
+-            LT = np_0b[:, var_names.index("LT")]
+-            HT = np_0b[:, var_names.index("HT")]
+-            n_jets = np_0b[:, var_names.index("n_jets")]
+-
+-            # at some point, we have to define the signal regions
+-            LT1_nj5 = np_0b[
+-                (LT > 250) & (LT < 450) & (Dphi > 1) & (HT > 500) & (n_jets == 5)
+-            ]
+-            LT1_nj67 = np_0b[
+-                (LT > 250)
+-                & (LT < 450)
+-                & (Dphi > 1)
+-                & (HT > 500)
+-                & (n_jets > 5)
+-                & (n_jets < 8)
+-            ]
+-            LT1_nj8i = np_0b[
+-                (LT > 250) & (LT < 450) & (Dphi > 1) & (HT > 500) & (n_jets > 7)
+-            ]
+-
+-            LT2_nj5 = np_0b[
+-                (LT > 450) & (LT < 650) & (Dphi > 0.75) & (HT > 500) & (n_jets == 5)
+-            ]
+-            LT2_nj67 = np_0b[
+-                (LT > 450)
+-                & (LT < 650)
+-                & (Dphi > 0.75)
+-                & (HT > 500)
+-                & (n_jets > 5)
+-                & (n_jets < 8)
+-            ]
+-            LT2_nj8i = np_0b[
+-                (LT > 450) & (LT < 650) & (Dphi > 0.75) & (HT > 500) & (n_jets > 7)
+-            ]
+-
+-            LT3_nj5 = np_0b[(LT > 650) & (Dphi > 0.75) & (HT > 500) & (n_jets == 5)]
+-            LT3_nj67 = np_0b[
+-                (LT > 650) & (Dphi > 0.75) & (HT > 500) & (n_jets > 5) & (n_jets < 8)
+-            ]
+-            LT3_nj8i = np_0b[(LT > 650) & (Dphi > 0.75) & (HT > 500) & (n_jets > 7)]
+-
+-            signal_events += (
+-                len(LT1_nj5)
+-                + len(LT1_nj67)
+-                + len(LT1_nj8i)
+-                + len(LT2_nj5)
+-                + len(LT2_nj67)
+-                + len(LT2_nj8i)
+-                + len(LT3_nj5)
+-                + len(LT3_nj67)
+-                + len(LT3_nj8i)
+-            )
+-
+-        from IPython import embed
+-
+-        embed()
+-
+-
+-class GroupCoffeaProcesses(DatasetTask):
+-
+-    """
+-    Task to group coffea hist together if needed (e.g. get rid of an axis)
+-    Or reproduce root files for Combine
+-    """
+-
+-    # histogram naming template:
+-    template = "{variable}_{process}_{category}"
+-
+-    def requires(self):
+-        return CoffeaProcessor.req(self, processor="Histogramer")
+-
+-    def output(self):
+-        return self.local_target("legacy_hists.root")
+-        # return dict(
+-        #    coffea=self.local_target("legacy_hists.coffea"),
+-        #    root=self.local_target("legacy_hists.root"),
+-        # )
+-
+-    def store_parts(self):
+-        return super(GroupCoffeaProcesses, self).store_parts() + (self.analysis_choice,)
+-
+-    @law.decorator.timeit(publish_message=True)
+-    @law.decorator.safe_output
+-    def run(self):
+-
+-        import uproot3 as up3
+-
+-        # needed for newtrees
+-        # hists = coffea.util.load(self.input().path)
+-        hists = self.input()["collection"][0].load()
+-
+-        datasets = self.config_inst.datasets.names()
+-        categories = self.config_inst.categories.names()
+-
+-        # create dir and write coffea to root hists
+-        self.output().parent.touch()
+-        with up3.recreate(self.output().path) as root_file:
+-            var_keys = hists.keys()
+-            # var1='METPt'
+-            for var in var_keys:
+-                for dat in datasets:
+-                    for cat in categories:
+-
+-                        # hacky way to get the hidden array of dict values
+-                        # arr=list(hists[var1][('TTJets_sl_fromt','N1b_CR')].values())[0]
+-
+-                        # root_file[categories[0]] = up3.newtree({self.template.format(variable=var1, process=datasets[0], category=categories[0]):np.float64})
+-                        # root_file[categories[0]].extend({self.template.format(variable=var1, process=datasets[0], category=categories[0]):arr})
+-
+-                        hist_name = self.template.format(
+-                            variable=var, process=dat, category=cat
+-                        )
+-                        if "data" in dat:
+-                            hist_name = self.template.format(
+-                                variable=var, process="data_obs", category=cat
+-                            )
+-
+-                        # from IPython import embed;embed()
+-                        root_file[hist_name] = coffea.hist.export1d(
+-                            hists[var][(dat, cat)].project(var)
+-                        )
+-
+-                        # cutflow variable may have to be an exception
++            for i in tqdm(range(len(np_dict)//2)):
++
++                np_0b = np.load(np_dict["job_{}_N0b".format(i)].path)
++
++                LT = np_0b[:, var_names.index("LT")]
++                HT = np_0b[:, var_names.index("HT")]
++                n_jets = np_0b[:, var_names.index("n_jets")]
++
++                tot_events += len(np_0b)
++                signal_events += len(np_0b[(LT > 250) & (HT > 500) & (n_jets > 4)])
++
++            count_dict = {key: {
++                "tot_events": tot_events,
++                "signal_events": signal_events,
++            }}
++            print(count_dict)
++            event_counts.update(count_dict)
++        #print(event_counts)ä
++        self.output().dump(event_counts)
++        #from IPython import embed; embed()

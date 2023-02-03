@@ -22,7 +22,6 @@ class MakeFilesTask(AnalysisTask):
 
     directory_path = Parameter(
         default="/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2023_01_18/2017/Data/root"
-        # "/nfs/dust/cms/user/wiens/CMSSW/CMSSW_10_6_8/Skimming/2020_12_04/merged"
     )
 
 
@@ -37,7 +36,6 @@ class WriteDatasets(MakeFilesTask):
         }
 
     def run(self):
-        # from IPython import embed;embed()
         self.output()["dataset_dict"].parent.touch()
         file_dict = {}
         for root, dirs, files in os.walk(self.directory_path):
@@ -60,7 +58,6 @@ class WriteDatasets(MakeFilesTask):
         self.output()["dataset_dict"].dump(file_dict)
         self.output()["dataset_path"].dump(self.directory_path)
         self.output()["job_number_dict"].dump(job_number_dict)
-
 
 class WriteConfigData(MakeFilesTask):
     def requires(self):

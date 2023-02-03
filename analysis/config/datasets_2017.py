@@ -542,6 +542,14 @@ def setup_datasets(cfg, campaign):
         ],
     )
     cfg.add_dataset(
+        "data_e_B",
+        1702,
+        campaign=campaign,
+        keys=[
+            "SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD/SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD_14_merged.root",
+        ],
+    )
+    cfg.add_dataset(
         "data_e_C",
         1703,
         campaign=campaign,
@@ -857,5 +865,54 @@ def setup_datasets(cfg, campaign):
             "SingleMuon_Run2016H-Nano25Oct2019-v1_NANOAOD/SingleMuon_Run2016H-Nano25Oct2019-v1_NANOAOD_4_merged.root",
             "SingleMuon_Run2016H-Nano25Oct2019-v1_NANOAOD/SingleMuon_Run2016H-Nano25Oct2019-v1_NANOAOD_13_merged.root",
             "SingleMuon_Run2016H-Nano25Oct2019-v1_NANOAOD/SingleMuon_Run2016H-Nano25Oct2019-v1_NANOAOD_10_merged.root",
+        ],
+    )
+    # doing blank MET data
+    cfg.add_dataset(
+        "data_MET_B",
+        1902,
+        campaign=campaign,
+        keys=[
+            "SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD/SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD_14_merged.root",
+        ],
+    )
+    cfg.add_dataset(
+        "data_MET_C",
+        1903,
+        campaign=campaign,
+        keys=[
+            "SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD/SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD_14_merged.root",
+        ],
+    )
+    cfg.add_dataset(
+        "data_MET_D",
+        1904,
+        campaign=campaign,
+        keys=[
+            "SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD/SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD_14_merged.root",
+        ],
+    )
+    cfg.add_dataset(
+        "data_MET_E",
+        1905,
+        campaign=campaign,
+        keys=[
+            "SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD/SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD_14_merged.root",
+        ],
+    )
+    cfg.add_dataset(
+        "data_MET_F",
+        1906,
+        campaign=campaign,
+        keys=[
+            "SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD/SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD_14_merged.root",
+        ],
+    )
+    cfg.add_dataset(
+        "data_MET_G",
+        1907,
+        campaign=campaign,
+        keys=[
+            "SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD/SingleElectron_Run2016C-Nano25Oct2019-v1_NANOAOD_14_merged.root",
         ],
     )
