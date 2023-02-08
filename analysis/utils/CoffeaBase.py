@@ -573,7 +573,6 @@ class BaseSelection:
         )
 
         #from IPython import embed; embed()
-
         return locals()
 
 
