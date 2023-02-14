@@ -41,11 +41,11 @@ class CoffeaTask(DatasetTask):
     data_key = Parameter(default="SingleMuon")
     # parameter with selection we use coffea
     lepton_selection = Parameter(default="Muon")
-    job_dict = {
-        "SingleElectron": 1,  # 245,
-        "MET": 1,  # 292,
-        "SingleMuon": 1,  # 419,
-    }
+    # job_dict = {
+    #     "SingleElectron": 1,  # 245,
+    #     "MET": 1,  # 292,
+    #     "SingleMuon": 1,  # 419,
+    # }
 
 
 class CoffeaProcessor(
@@ -68,9 +68,9 @@ class CoffeaProcessor(
         # return WriteFileset.req(self)
 
     def create_branch_map(self):
-        if self.debug:
-            return list(range(1))
-        return list(range(self.job_dict[self.data_key]))  # self.job_number
+        # if self.debug:
+        return list(range(1))
+        #return list(range(self.job_dict[self.data_key]))  # self.job_number
 
     def output(self):
         datasets = self.config_inst.datasets.names()
@@ -110,7 +110,7 @@ class CoffeaProcessor(
 
     @law.decorator.timeit(publish_message=True)
     def run(self):
-        # FIXME
+        # FIXME mom
         # with open(self.input().path, "r") as read_file:
         # fileset = json.load(read_file)
         data_dict = self.input()[
