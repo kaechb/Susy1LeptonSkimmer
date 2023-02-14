@@ -70,7 +70,7 @@ class CoffeaProcessor(
     def create_branch_map(self):
         # if self.debug:
         return list(range(1))
-        #return list(range(self.job_dict[self.data_key]))  # self.job_number
+        # return list(range(self.job_dict[self.data_key]))  # self.job_number
 
     def output(self):
         return self.local_target("signal.npy")
@@ -113,11 +113,13 @@ class CoffeaProcessor(
 
         # building together the respective strings to use for the coffea call
         treename = self.lepton_selection
-        subset = sorted(data_dict["T5qqqqVV_FS_1"])
+        key_name = list(data_dict.keys())[0]
+        subset = sorted(data_dict[key_name])
+        dataset = key_name.split("_")[0]
 
         with up.open(data_path + "/" + subset[self.branch]) as file:
             # data_path + "/" + subset[self.branch]
-            primaryDataset = file["MetaData"]["primaryDataset"].array()[0]
+            primaryDataset = "MC"  # file["MetaData"]["primaryDataset"].array()[0]
             isData = file["MetaData"]["IsData"].array()[0]
         fileset = {
             dataset: {
@@ -187,7 +189,7 @@ class CoffeaProcessor(
         # save outputs
         # seperated for processor, both need different touch calls
         if self.processor == "ArrayExporter":
-            self.output().popitem()[1].parent.touch()
+            self.output().parent.touch()
             for cat in out["arrays"]:
                 self.output().dump(out["arrays"][cat]["hl"].value)
                 # self.output()[cat].dump(out["arrays"][cat]["hl"].value)

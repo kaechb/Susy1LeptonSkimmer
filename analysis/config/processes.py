@@ -57,7 +57,30 @@ def setup_processes(cfg):
     )
     """
 
-    ############
+    ### signal ###
+    cfg.add_process(
+        "T5qqqqVV",
+        1,
+        label=r"T5qqqqVV",
+        label_short="T5",
+        color=(100, 100, 100),
+        xsecs={
+            13: sn.Number(0.1),  # FIXME
+        },
+    )
+
+    cfg.add_process(
+        "T1tttt",
+        2,
+        label=r"T1tttt",
+        label_short="T1",
+        color=(150, 150, 150),
+        xsecs={
+            13: sn.Number(0.1),  # FIXME
+        },
+    )
+
+    #### MC ####
 
     cfg.add_process(
         "TTJets",
