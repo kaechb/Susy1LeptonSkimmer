@@ -292,15 +292,12 @@ class ArrayPlotting(CoffeaTask):
 
     def requires(self):
         return {
-            "{}_{}".format(sel, dat): CoffeaProcessor.req(
+            sel: CoffeaProcessor.req(
                 self,
-                data_key=dat,
                 lepton_selection=sel,
-                job_number=self.job_dict[dat],
-                # workflow="local",
+                workflow="local",
             )
-            for sel in ["Muon", "Electron"]
-            for dat in ["SingleMuon", "MET", "SingleElectron"]
+            for sel in ["Muon"]  # , "Electron"]
         }
 
     def output(self):
@@ -345,13 +342,10 @@ class ArrayPlotting(CoffeaTask):
 
                 # define empty hists
                 np_hist = np.array([])
-
-                for i in range(len(np_dict) // 2):
-                    # from IPython import embed; embed()
-                    # dataset = "data_mu_" + key.split("Run" + self.year)[1][0]
-
-                    np_0b = np.load(np_dict["job_{}_N0b".format(i)].path)
-                    np_hist = np.append(np_hist, np_0b[:, var_names.index(var.name)])
+                np_0b = np.load(
+                    np_dict.path
+                )  # np.load(np_dict["job_{}_N0b".format(i)].path)
+                np_hist = np.append(np_hist, np_0b[:, var_names.index(var.name)])
                 # integrate hist
                 bins = np.arange(
                     var.binning[1],
