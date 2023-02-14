@@ -73,39 +73,14 @@ class CoffeaProcessor(
         #return list(range(self.job_dict[self.data_key]))  # self.job_number
 
     def output(self):
-        datasets = self.config_inst.datasets.names()
-        if self.debug:
-            datasets = [self.debug_dataset]
-        # out = {
-        # cat + "_" + dat: self.local_target(cat + "_" + dat + ".npy")
-        # for dat in datasets
-        # for cat in self.config_inst.categories.names()
-        # }
-        out = {
-            "job_{}_{}".format(job, cat): self.local_target(
-                "job_{}_{}.npy".format(job, cat)
-            )
-            for job in range((self.job_dict[self.data_key]))
-            for cat in self.config_inst.categories.names()
-        }
-        # overwrite array export logic if we want to histogram
-        if self.processor == "Histogramer":
-            out = self.local_target("hists.coffea")
-        return out
+        return self.local_target("signal.npy")
 
     def store_parts(self):
         parts = (
             self.analysis_choice,
             self.processor,
-            self.data_key,
             self.lepton_selection,
         )
-        if self.debug:
-            parts += (
-                "debug",
-                self.debug_dataset,
-                self.debug_str.split("/")[-1].replace(".root", ""),
-            )
         return super(CoffeaProcessor, self).store_parts() + parts
 
     @law.decorator.timeit(publish_message=True)
@@ -136,20 +111,10 @@ class CoffeaProcessor(
         if self.processor == "Histogramer":
             processor_inst = Histogramer(self, self.lepton_selection)
 
-        # unneccessary for now, good pdractice if we want to add utility later
-        lepton_dict = {
-            "SingleElectron": "data_e_",
-            "MET": "data_MET_",
-            "SingleMuon": "data_mu_",
-        }
-
         # building together the respective strings to use for the coffea call
         treename = self.lepton_selection
-        subset = sorted(data_dict[self.data_key])
-        dataset = (
-            lepton_dict[self.data_key]
-            + subset[self.branch].split("Run" + self.year)[1][0]
-        )
+        subset = sorted(data_dict["T5qqqqVV_FS_1"])
+
         with up.open(data_path + "/" + subset[self.branch]) as file:
             # data_path + "/" + subset[self.branch]
             primaryDataset = file["MetaData"]["primaryDataset"].array()[0]
@@ -224,9 +189,7 @@ class CoffeaProcessor(
         if self.processor == "ArrayExporter":
             self.output().popitem()[1].parent.touch()
             for cat in out["arrays"]:
-                self.output()[
-                    "job_{}_{}".format(self.branch, cat.split("_data")[0])
-                ].dump(out["arrays"][cat]["hl"].value)
+                self.output().dump(out["arrays"][cat]["hl"].value)
                 # self.output()[cat].dump(out["arrays"][cat]["hl"].value)
             # hacky way of defining if task is done FIXME
             # self.output().dump(np.array([1]))
