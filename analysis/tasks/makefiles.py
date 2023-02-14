@@ -59,6 +59,7 @@ class WriteDatasets(MakeFilesTask):
         self.output()["dataset_path"].dump(self.directory_path)
         self.output()["job_number_dict"].dump(job_number_dict)
 
+
 class WriteConfigData(MakeFilesTask):
     def requires(self):
         return WriteDatasets.req(self, directory_path=self.directory_path)

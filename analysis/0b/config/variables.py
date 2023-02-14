@@ -31,7 +31,7 @@ def setup_variables(cfg):
     cfg.add_variable(
         name="LT",
         expression="LT",
-        binning=(50, 0.0, 1000),
+        binning=(50, 0.0, 2000),
         unit="GeV",
         x_title="LT",
     )
@@ -39,7 +39,7 @@ def setup_variables(cfg):
     cfg.add_variable(
         name="HT",
         expression="HT",
-        binning=(50, 0.0, 1000.0),
+        binning=(50, 0.0, 4000.0),
         unit="GeV",
         x_title="HT",
     )
@@ -64,7 +64,7 @@ def setup_variables(cfg):
     cfg.add_variable(
         name="n_electron",
         expression="n_electron",
-        binning=(20, 0, 20),
+        binning=(10, 0, 10),
         # unit="",
         x_title="Number of Electrons",
     )

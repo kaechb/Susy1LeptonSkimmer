@@ -185,8 +185,7 @@ class BaseSelection:
         # )
         # two_lep = ak.mask(events.MuonPt, (events.nMuon == 2))
         # veto_lepton = two_lep[:, 1] < 10
-        veto_lepton = (events.MuonPt[:, 1:2] > 10) & events.MuonLooseId[:,1:2]
-
+        veto_lepton = (events.MuonPt[:, 1:2] > 10) & events.MuonLooseId[:, 1:2]
 
         """
         om gosh, that can be solved so much easier
@@ -215,15 +214,15 @@ class BaseSelection:
         # lep selection
         lep_selection = (
             (lead_lep_pt > 25)
-            #& (veto_lepton | (events.nMuon == 1))
-            #& (n_leptons == 1)
-            #& (ak.num(veto_lepton) == 0)
+            # & (veto_lepton | (events.nMuon == 1))
+            # & (n_leptons == 1)
+            # & (ak.num(veto_lepton) == 0)
             & (muon_selection)
             & (events.nGoodMuon == 1)
-            #& (ak.num(veto_lepton) == 0)
-            #& ((events.nVetoElectron == 0) & (events.nVetoMuon == 0) )
-            & ((ak.sum(events.ElectronIsVeto, axis=-1) == 0) & (ak.sum(events.MuonIsVeto, axis=-1) == 0) )
-            )
+            # & (ak.num(veto_lepton) == 0)
+            & ((events.nVetoElectron == 0) & (events.nVetoMuon == 0))
+            # & ((ak.sum(events.ElectronIsVeto, axis=-1) == 0) & (ak.sum(events.MuonIsVeto, axis=-1) == 0) )
+        )
 
         """
         b=ak.where(ak.num(lead_lep_phi) > 0, lead_lep_pt > 10, False)
@@ -234,10 +233,12 @@ class BaseSelection:
 
         # jet variables
         n_jets = events.nJet
-        n_b_jets = events.nDeepJetMediumBTag  # nMediumDFBTagJet  # 'nMediumCSVBTagJet' ?
+        n_b_jets = (
+            events.nDeepJetMediumBTag
+        )  # nMediumDFBTagJet  # 'nMediumCSVBTagJet' ?
         # used for tagging
-        n_W_tags =  ak.fill_none(ak.firsts(events.FatJetDeepTagTvsQCD), value=0)
-        n_t_tags =  ak.fill_none(ak.firsts(events.FatJetDeepTagWvsQCD), value=0)
+        n_W_tags = ak.fill_none(ak.firsts(events.FatJetDeepTagTvsQCD), value=0)
+        n_t_tags = ak.fill_none(ak.firsts(events.FatJetDeepTagWvsQCD), value=0)
         jet_mass_1 = ak.fill_none(ak.firsts(events.JetMass[:, 0:1]), value=0)
         jet_pt_1 = ak.fill_none(
             ak.firsts(events.JetPt[:, 0:1]), value=0
@@ -276,24 +277,28 @@ class BaseSelection:
 
         baseline_selection = (
             lep_selection
-            #(lead_lep_pt > 25)
+            # (lead_lep_pt > 25)
             # &veto lepton > 10
             # &No isolated track with p T ≥ 10 GeV and M T2 < 60 GeV (80 GeV) for hadronic (leptonic)
             & (sorted_jets[:, 1] > 80)
             & (LT > 250)
             & (HT > 500)
-            & (ak.num(good_jets)>= 3)  # kinda double, but keep it for now
+            & (ak.num(good_jets) >= 3)  # kinda double, but keep it for now
             & (iso_track)
         )
 
         # data trigger
-        trigger_HLT_Or =  (events.HLT_MuonOr | events.HLT_MetOr | events.HLT_EleOr)
+        trigger_HLT_Or = events.HLT_MuonOr | events.HLT_MetOr | events.HLT_EleOr
         self.add_to_selection(selection, "trigger_HLT_Or", trigger_HLT_Or)
 
         # base selection
         zero_b = n_b_jets == 0
         multi_b = n_b_jets >= 1
-        self.add_to_selection(selection, "baseline_selection",ak.fill_none(ak.firsts(baseline_selection),False)) #) baseline_selection)
+        self.add_to_selection(
+            selection,
+            "baseline_selection",
+            ak.fill_none(ak.firsts(baseline_selection), False),
+        )  # ) baseline_selection)
         self.add_to_selection(selection, "zero_b", zero_b)
         self.add_to_selection(selection, "multi_b", multi_b)
 
@@ -304,14 +309,28 @@ class BaseSelection:
         HLT_MuonOr = events.HLT_MuonOr
         HLT_MetOr = events.HLT_MetOr
         HLT_EleOr = events.HLT_EleOr
-        HLT_MuonOr = events.HLT_MuonOr
 
-        self.add_to_selection(selection, "HLT_EleOr", events.HLT_EleOr)
-        self.add_to_selection(selection, "HLT_MuonOr", events.HLT_MuonOr)
-        self.add_to_selection(selection, "HLT_MetOr", events.HLT_MetOr)
+        self.add_to_selection(selection, "HLT_EleOr", HLT_EleOr)
+        self.add_to_selection(selection, "HLT_MuonOr", HLT_MuonOr)
+        self.add_to_selection(selection, "HLT_MetOr", HLT_MetOr)
+
+        # prevent double counting in data
+        # ~(events.metadata["IsData"]) |
+        doubleCounting_XOR = (
+            ((events.metadata["PD"] == "isSingleElectron") & HLT_EleOr)
+            | ((events.metadata["PD"] == "isSingleMuon") & HLT_MuonOr & ~HLT_EleOr)
+            | (
+                (events.metadata["PD"] == "isMet")
+                & HLT_MetOr
+                & ~HLT_MuonOr
+                & ~HLT_EleOr
+            )
+        )
+        self.add_to_selection(selection, "doubleCounting_XOR", doubleCounting_XOR)
 
         # apply some weights,  MC/data check beforehand
         if not process.is_data:
+            # if ~(events.metadata["IsData"]):
             weights.add("x_sec", process.xsecs[13.0].nominal)
 
             # # some weights have more than weight, not always consistent
@@ -390,7 +409,12 @@ class BaseSelection:
         opposite charge with respect to the selected lepton is chosen.
         """
 
-        common = ["baseline_selection", "lep_selection", "trigger_HLT_Or"] #"HLT_MuonOr", "HLT_MetOr"]
+        common = [
+            "baseline_selection",
+            "lep_selection",
+            "trigger_HLT_Or",
+            "doubleCounting_XOR",
+        ]  # "HLT_MuonOr", "HLT_MetOr"]
         # signalRegion = events.signalRegion == 1
         # controlRegion = events.signalRegion == 0
         delta_phi_SR = events.DeltaPhi > 0.9
@@ -407,20 +431,22 @@ class BaseSelection:
         categories = dict(
             N0b=common + ["zero_b"],
             N1ib=common + ["multi_b"],
-            #N0b_SR=common + ["zero_b", "delta_phi_SR"],
-            #N1b_SR=common + ["multi_b", "delta_phi_SR"],
-            #N0b_CR=common + ["zero_b", "delta_phi_CR"],
-            #N1b_CR=common + ["multi_b", "delta_phi_CR"],
+            # N0b_SR=common + ["zero_b", "delta_phi_SR"],
+            # N1b_SR=common + ["multi_b", "delta_phi_SR"],
+            # N0b_CR=common + ["zero_b", "delta_phi_CR"],
+            # N1b_CR=common + ["multi_b", "delta_phi_CR"],
         )
 
-        #from IPython import embed; embed()
+        from IPython import embed
+
+        embed()
         return locals()
 
     ##################Electron####################
 
     def Electron_select(self, events):
 
-        #print(dir(events))
+        # print(dir(events))
 
         # set up stuff to fill
         output = self.accumulator.identity()
@@ -447,29 +473,33 @@ class BaseSelection:
         # MuonMass
         lep_charge = events.ElectronCharge
         lep_pdgid = events.ElectronPdgId
-        #veto_lepton = events.ElectronPt[:, 1:2] > 10
+        # veto_lepton = events.ElectronPt[:, 1:2] > 10
 
         # ele selection, have a good leading leptoni
-        electron_selection = events.ElectronTightId[:, 0:1] & (abs(lep_pdgid[:, 0:1]) == 11)
+        electron_selection = events.ElectronTightId[:, 0:1] & (
+            abs(lep_pdgid[:, 0:1]) == 11
+        )
 
         # lep selection
         lep_selection = (
             (lead_lep_pt > 25)
-            #& (veto_lepton | (events.nMuon == 1))
-            & (events.nGoodElectron == 1) #n_leptons == 1)
-            #& (ak.num(veto_lepton) == 0)
-            #& ((events.nVetoElectron == 0) & (events.nVetoMuon == 0) )
-            & ((ak.sum(events.ElectronIsVeto, axis=-1) == 0) & (ak.sum(events.MuonIsVeto, axis=-1) == 0) )
+            # & (veto_lepton | (events.nMuon == 1))
+            & (events.nGoodElectron == 1)  # n_leptons == 1)
+            # & (ak.num(veto_lepton) == 0)
+            & ((events.nVetoElectron == 0) & (events.nVetoMuon == 0))
+            # & ((ak.sum(events.ElectronIsVeto, axis=-1) == 0) & (ak.sum(events.MuonIsVeto, axis=-1) == 0) )
             & (electron_selection)
         )
         self.add_to_selection(selection, "lep_selection", ak.firsts(lep_selection))
 
         # jet variables
         n_jets = events.nJet
-        n_b_jets = events.nDeepJetMediumBTag  # nMediumDFBTagJet  # 'nMediumCSVBTagJet' ?
+        n_b_jets = (
+            events.nDeepJetMediumBTag
+        )  # nMediumDFBTagJet  # 'nMediumCSVBTagJet' ?
         # used for tagging
-        n_W_tags =  ak.fill_none(ak.firsts(events.FatJetDeepTagTvsQCD), value=0)
-        n_t_tags =  ak.fill_none(ak.firsts(events.FatJetDeepTagWvsQCD), value=0)
+        n_W_tags = ak.fill_none(ak.firsts(events.FatJetDeepTagTvsQCD), value=0)
+        n_t_tags = ak.fill_none(ak.firsts(events.FatJetDeepTagWvsQCD), value=0)
         jet_mass_1 = ak.fill_none(ak.firsts(events.JetMass[:, 0:1]), value=0)
         jet_pt_1 = ak.fill_none(
             ak.firsts(events.JetPt[:, 0:1]), value=0
@@ -506,38 +536,41 @@ class BaseSelection:
 
         iso_track = events.IsoTrackVeto
         # iso_tracks = (
-            # (events.IsoTrackPt > 10)
-            # & (
-            # (events.IsoTrackMt2 < 60) & events.IsoTrackIsHadronicDecay)
-            # | ((events.IsoTrackMt2 < 80) & ~(events.IsoTrackIsHadronicDecay))
+        # (events.IsoTrackPt > 10)
+        # & (
+        # (events.IsoTrackMt2 < 60) & events.IsoTrackIsHadronicDecay)
+        # | ((events.IsoTrackMt2 < 80) & ~(events.IsoTrackIsHadronicDecay))
         # )
 
         # ghost muon filter
-        ghost_muon_filter = events.MetPt / events.CaloMET_pt <=5
-
+        ghost_muon_filter = events.MetPt / events.CaloMET_pt <= 5
 
         baseline_selection = (
             lep_selection
-            #(lead_lep_pt > 25)
+            # (lead_lep_pt > 25)
             # &veto lepton > 10
             # &No isolated track with p T ≥ 10 GeV and M T2 < 60 GeV (80 GeV) for hadronic (leptonic)
             & (sorted_jets[:, 1] > 80)
             & (LT > 250)
             & (HT > 500)
-            & (ak.num(good_jets)>= 3)  # kinda double, but keep it for now
+            & (ak.num(good_jets) >= 3)  # kinda double, but keep it for now
             # & (ak.num(iso_tracks) ==0)
             & (iso_track)
-            #& (ghost_muon_filter)
+            # & (ghost_muon_filter)
         )
 
         # data trigger
-        trigger_HLT_Or =  (events.HLT_MuonOr | events.HLT_MetOr | events.HLT_EleOr)
+        trigger_HLT_Or = events.HLT_MuonOr | events.HLT_MetOr | events.HLT_EleOr
         self.add_to_selection(selection, "trigger_HLT_Or", trigger_HLT_Or)
 
         # base selection
         zero_b = n_b_jets == 0
         multi_b = n_b_jets >= 1
-        self.add_to_selection(selection, "baseline_selection",ak.fill_none(ak.firsts(baseline_selection),False)) #) baseline_selection)
+        self.add_to_selection(
+            selection,
+            "baseline_selection",
+            ak.fill_none(ak.firsts(baseline_selection), False),
+        )  # ) baseline_selection)
         self.add_to_selection(selection, "zero_b", zero_b)
         self.add_to_selection(selection, "multi_b", multi_b)
 
@@ -548,17 +581,35 @@ class BaseSelection:
         HLT_MuonOr = events.HLT_MuonOr
         HLT_MetOr = events.HLT_MetOr
         HLT_EleOr = events.HLT_EleOr
-        HLT_MuonOr = events.HLT_MuonOr
 
         self.add_to_selection(selection, "HLT_EleOr", events.HLT_EleOr)
         self.add_to_selection(selection, "HLT_MuonOr", events.HLT_MuonOr)
         self.add_to_selection(selection, "HLT_MetOr", events.HLT_MetOr)
 
+        # prevent double counting in data
+        doubleCounting_XOR = (
+            # ~(events.metadata["IsData"]) |
+            ((events.metadata["PD"] == "isSingleElectron") & HLT_EleOr)
+            | ((events.metadata["PD"] == "isSingleMuon") & HLT_MuonOr & ~HLT_EleOr)
+            | (
+                (events.metadata["PD"] == "isMet")
+                & HLT_MetOr
+                & ~HLT_MuonOr
+                & ~HLT_EleOr
+            )
+        )
+        self.add_to_selection(selection, "doubleCounting_XOR", doubleCounting_XOR)
+
         # apply some weights,  MC/data check beforehand
         if not process.is_data:
             weights.add("x_sec", process.xsecs[13.0].nominal)
 
-        common = ["lep_selection", "trigger_HLT_Or"] #"HLT_MuonOr", "HLT_MetOr"]
+        common = [
+            "baseline_selection",
+            "lep_selection",
+            "trigger_HLT_Or",
+            "doubleCounting_XOR",
+        ]  # "HLT_MuonOr", "HLT_MetOr"]
         # "baseline_selection",
 
         delta_phi_SR = events.DeltaPhi > 0.9
@@ -572,9 +623,10 @@ class BaseSelection:
             N1ib=common + ["multi_b"],
         )
 
-        #from IPython import embed; embed()
-        return locals()
+        from IPython import embed
 
+        embed()
+        return locals()
 
 
 # turning off progress bar
@@ -694,7 +746,7 @@ class ArrayExporter(BaseProcessor, BaseSelection):
     sep = "_"
 
     def __init__(self, task, Lepton):
-        self.Lepton =Lepton
+        self.Lepton = Lepton
         super().__init__(task)
         self._accumulator["arrays"] = dict_accumulator()
 

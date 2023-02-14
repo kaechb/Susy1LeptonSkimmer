@@ -41,9 +41,11 @@ class CoffeaTask(DatasetTask):
     data_key = Parameter(default="SingleMuon")
     # parameter with selection we use coffea
     lepton_selection = Parameter(default="Muon")
-    job_dict = {"SingleElectron": 245,
-        "MET":292,
-        "SingleMuon": 414}
+    job_dict = {
+        "SingleElectron": 1,  # 245,
+        "MET": 1,  # 292,
+        "SingleMuon": 1,  # 419,
+    }
 
 
 class CoffeaProcessor(
@@ -68,7 +70,7 @@ class CoffeaProcessor(
     def create_branch_map(self):
         if self.debug:
             return list(range(1))
-        return list(range(self.job_dict[self.data_key])) #self.job_number
+        return list(range(self.job_dict[self.data_key]))  # self.job_number
 
     def output(self):
         datasets = self.config_inst.datasets.names()
@@ -80,7 +82,7 @@ class CoffeaProcessor(
         # for cat in self.config_inst.categories.names()
         # }
         out = {
-            "job_{}".format(job): self.local_target(
+            "job_{}_{}".format(job, cat): self.local_target(
                 "job_{}_{}.npy".format(job, cat)
             )
             for job in range((self.job_dict[self.data_key]))
@@ -92,7 +94,12 @@ class CoffeaProcessor(
         return out
 
     def store_parts(self):
-        parts = (self.analysis_choice, self.processor, self.data_key, self.lepton_selection)
+        parts = (
+            self.analysis_choice,
+            self.processor,
+            self.data_key,
+            self.lepton_selection,
+        )
         if self.debug:
             parts += (
                 "debug",
@@ -100,12 +107,6 @@ class CoffeaProcessor(
                 self.debug_str.split("/")[-1].replace(".root", ""),
             )
         return super(CoffeaProcessor, self).store_parts() + parts
-
-    # def scheduler_messages(self):
-    # def empty():
-    # return True
-    # scheduler_messages.empty = empty
-    # return scheduler_messages
 
     @law.decorator.timeit(publish_message=True)
     def run(self):
@@ -149,20 +150,33 @@ class CoffeaProcessor(
             lepton_dict[self.data_key]
             + subset[self.branch].split("Run" + self.year)[1][0]
         )
-        fileset = {dataset: [data_path + "/" + subset[self.branch]]}
-
+        with up.open(data_path + "/" + subset[self.branch]) as file:
+            # data_path + "/" + subset[self.branch]
+            primaryDataset = file["MetaData"]["primaryDataset"].array()[0]
+            isData = file["MetaData"]["IsData"].array()[0]
+        fileset = {
+            dataset: {
+                "files": [data_path + "/" + subset[self.branch]],
+                "metadata": {
+                    "PD": primaryDataset,
+                    "IsData": isData,
+                },
+            }
+        }
         if self.debug:
             from IPython import embed
 
-            #embed()
-            #fileset = {self.debug_dataset: [fileset[self.debug_dataset][0]]}
-            #fileset = {self.debug_dataset: [self.debug_str]            }
+            # embed()
+            # fileset = {self.debug_dataset: [fileset[self.debug_dataset][0]]}
+            # fileset = {self.debug_dataset: [self.debug_str]
+            # self.branch =11
             with up.open(data_path + "/" + subset[self.branch]) as file:
                 # data_path + "/" + subset[self.branch]
-                sampleName = file["MetaData"]['SampleName']
-            fileset = {dataset: {
-                "files": [data_path + "/" + subset[self.branch]],
-                "metadata": {"Era": sampleName},
+                primaryDataset = file["MetaData"]["primaryDataset"].array()[0]
+            fileset = {
+                dataset: {
+                    "files": [data_path + "/" + subset[self.branch]],
+                    "metadata": {"PD": primaryDataset},
                 }
             }
 
@@ -177,8 +191,10 @@ class CoffeaProcessor(
             # pre_executor=processor.futures_executor,
             # pre_args=dict(workers=32),
             executor=processor.iterative_executor,
-            executor_args=dict(status=False, desc="Trolling"),  # desc="", unit=""), # , desc="Trolling"
-            #metadata_cache = 'MetaData',
+            executor_args=dict(
+                status=False
+            ),  # desc="", unit="Trolling"), # , desc="Trolling"
+            # metadata_cache = 'MetaData',
             # schema=BaseSchema,),
             chunksize=10000,
         )
@@ -220,18 +236,18 @@ class CoffeaProcessor(
             self.output().dump(out["histograms"])
 
 
-class SubmitCoffeaPerDataset(CoffeaTask): # , HTCondorWorkflow , law.LocalWorkflow
+class SubmitCoffeaPerDataset(CoffeaTask):  # , HTCondorWorkflow , law.LocalWorkflow
     # def create_branch_map(self):
-        # """
-        # Jobs on 2023/01/18
-        # SingleElectron 240
-        # MET 497
-        # SingleMuon 464
-        # """
-        # # return a job for every dataset that has to be processed
-        # return list(
-            # range(self.job_number)
-        # )  # by hand for now, same length as list of good files
+    # """
+    # Jobs on 2023/01/18
+    # SingleElectron 240
+    # MET 497
+    # SingleMuon 464
+    # """
+    # # return a job for every dataset that has to be processed
+    # return list(
+    # range(self.job_number)
+    # )  # by hand for now, same length as list of good files
 
     def requires(self):
         return WriteDatasets.req(self)
@@ -295,9 +311,9 @@ class SubmitCoffeaPerDataset(CoffeaTask): # , HTCondorWorkflow , law.LocalWorkfl
                 cof_proc = CoffeaProcessor.req(
                     self,
                     processor=self.processor,  # "ArrayExporter",
-                    #job_number=job_number_dict[key],
+                    # job_number=job_number_dict[key],
                     data_key=key,
-                    lepton_selection = sel,
+                    lepton_selection=sel,
                     # debug=True,
                     # debug_dataset=dataset,  # data_dict[key],
                     # debug_str=data_path + "/" + file,
@@ -306,18 +322,18 @@ class SubmitCoffeaPerDataset(CoffeaTask): # , HTCondorWorkflow , law.LocalWorkfl
                 )
                 # find output of the coffea processor
                 out_target = cof_proc.localize_output().args[0]["collection"].targets
-                #out_target = cof_proc.localize_output().args[0]
+                # out_target = cof_proc.localize_output().args[0]
 
                 new_target = {}
                 # unpack Localfiletargers, since json dump wont work otherwise
                 if self.processor == "ArrayExporter":
-                    #for i in range(len(out_target)):
+                    # for i in range(len(out_target)):
                     for path in out_target[0].keys():
-                        #FIXME
+                        # FIXME
                         new_target[path] = out_target[0][path].path
 
                 # if self.processor == "Histogramer":
-                    # out_target = out_target.path
+                # out_target = out_target.path
 
                 joblist.update({key + "_" + sel: new_target})
 
@@ -335,55 +351,54 @@ class SubmitCoffeaPerDataset(CoffeaTask): # , HTCondorWorkflow , law.LocalWorkfl
 
 
 class CollectCoffeaOutput(CoffeaTask):
-     def requires(self):
+    def requires(self):
 
         # return SubmitCoffeaPerDataset.req(
-            # self,
-            # dataset=self.debug_dataset,
-            # processor=self.processor,
-            # job_number=self.job_number,
+        # self,
+        # dataset=self.debug_dataset,
+        # processor=self.processor,
+        # job_number=self.job_number,
         # )
         return {
-            "{}_{}".format(sel, dat) :
-                CoffeaProcessor.req(
+            "{}_{}".format(sel, dat): CoffeaProcessor.req(
                 self,
-                data_key = dat,
-                lepton_selection= sel,
-                job_number =self.job_dict[dat],
-                #workflow="local",
+                data_key=dat,
+                lepton_selection=sel,
+                job_number=self.job_dict[dat],
+                # workflow="local",
             )
             for sel in ["Muon", "Electron"]
             for dat in ["SingleMuon", "MET", "SingleElectron"]
         }
 
-     # def output(self):
-     def output(self):
+    # def output(self):
+    def output(self):
         return self.local_target("event_counts.json")
 
-     def store_parts(self):
+    def store_parts(self):
         return super(CollectCoffeaOutput, self).store_parts() + (self.analysis_choice,)
 
-     @law.decorator.timeit(publish_message=True)
-     @law.decorator.safe_output
-     def run(self):
-        in_dict = self.input()#["collection"].targets
+    @law.decorator.timeit(publish_message=True)
+    @law.decorator.safe_output
+    def run(self):
+        in_dict = self.input()  # ["collection"].targets
 
-         # making clear which index belongs to which variable
+        # making clear which index belongs to which variable
         var_names = self.config_inst.variables.names()
         print(var_names)
-        #signal_events = 0
+        # signal_events = 0
         event_counts = {}
         # iterate over the indices for each file
         for key, value in in_dict.items():
             tot_events, signal_events = 0, 0
             np_dict = value["collection"].targets[0]
             # different key for each file, we ignore it for now, only interested in values
-            for i in tqdm(range(len(np_dict)//2)):
+            for i in tqdm(range(len(np_dict) // 2)):
                 # from IPython import embed; embed()
-                #dataset = "data_mu_" + key.split("Run" + self.year)[1][0]
+                # dataset = "data_mu_" + key.split("Run" + self.year)[1][0]
 
                 np_0b = np.load(np_dict["job_{}_N0b".format(i)].path)
-                #np_1ib = np.load(value["N1ib_" + dataset])
+                # np_1ib = np.load(value["N1ib_" + dataset])
 
                 Dphi = np_0b[:, var_names.index("Dphi")]
                 LT = np_0b[:, var_names.index("LT")]
@@ -423,7 +438,11 @@ class CollectCoffeaOutput(CoffeaTask):
 
                 LT3_nj5 = np_0b[(LT > 650) & (Dphi > 0.75) & (HT > 500) & (n_jets == 5)]
                 LT3_nj67 = np_0b[
-                    (LT > 650) & (Dphi > 0.75) & (HT > 500) & (n_jets > 5) & (n_jets < 8)
+                    (LT > 650)
+                    & (Dphi > 0.75)
+                    & (HT > 500)
+                    & (n_jets > 5)
+                    & (n_jets < 8)
                 ]
                 LT3_nj8i = np_0b[(LT > 650) & (Dphi > 0.75) & (HT > 500) & (n_jets > 7)]
 
@@ -441,10 +460,12 @@ class CollectCoffeaOutput(CoffeaTask):
 
                 tot_events += len(np_0b)
 
-            count_dict = {key: {
-                "tot_events": tot_events,
-                "signal_events": signal_events,
-            }}
+            count_dict = {
+                key: {
+                    "tot_events": tot_events,
+                    "signal_events": signal_events,
+                }
+            }
             print(count_dict)
             event_counts.update(count_dict)
 
@@ -452,69 +473,70 @@ class CollectCoffeaOutput(CoffeaTask):
 
         from IPython import embed
 
-        #embed()
+        # embed()
+
 
 # class CollectCoffeaOutput(CoffeaTask):
-    # def requires(self):
-        # # return SubmitCoffeaPerDataset.req(
-            # # self,
-            # # dataset=self.debug_dataset,
-            # # processor=self.processor,
-            # # job_number=self.job_number,
-        # # )
-        # return {
-            # "{}_{}".format(sel, dat) :
-                # CoffeaProcessor.req(
-                # self,
-                # data_key = dat,
-                # lepton_selection= sel,
-                # job_number =1,#self.job_dict[dat],
-                # workflow="local",
-            # )
-            # for sel in ["Muon", "Electron"]
-            # for dat in ["SingleMuon", "MET", "SingleElectron"]
-        # }
+# def requires(self):
+# # return SubmitCoffeaPerDataset.req(
+# # self,
+# # dataset=self.debug_dataset,
+# # processor=self.processor,
+# # job_number=self.job_number,
+# # )
+# return {
+# "{}_{}".format(sel, dat) :
+# CoffeaProcessor.req(
+# self,
+# data_key = dat,
+# lepton_selection= sel,
+# job_number =1,#self.job_dict[dat],
+# workflow="local",
+# )
+# for sel in ["Muon", "Electron"]
+# for dat in ["SingleMuon", "MET", "SingleElectron"]
+# }
 #
-    # def output(self):
-        # return self.local_target("event_counts.json")
+# def output(self):
+# return self.local_target("event_counts.json")
 #
-    # def store_parts(self):
-        # return super(CollectCoffeaOutput, self).store_parts() + (self.analysis_choice,)
+# def store_parts(self):
+# return super(CollectCoffeaOutput, self).store_parts() + (self.analysis_choice,)
 #
-    # @law.decorator.timeit(publish_message=True)
-    # @law.decorator.safe_output
-    # def run(self):
-        # in_dict = self.input()#["collection"].targets
+# @law.decorator.timeit(publish_message=True)
+# @law.decorator.safe_output
+# def run(self):
+# in_dict = self.input()#["collection"].targets
 #
-        # # making clear which index belongs to which variable
-        # var_names = self.config_inst.variables.names()
-        # print(var_names)
-        # event_counts = {}
-        # # iterate over the indices for each file
-        # for key, value in in_dict.items():
-            # tot_events, signal_events = 0, 0
-            # np_dict = value["collection"].targets[0]
-            # # different key for each file, we ignore it for now, only interested in values
-            # for i in tqdm(range(len(np_dict)//2)):
+# # making clear which index belongs to which variable
+# var_names = self.config_inst.variables.names()
+# print(var_names)
+# event_counts = {}
+# # iterate over the indices for each file
+# for key, value in in_dict.items():
+# tot_events, signal_events = 0, 0
+# np_dict = value["collection"].targets[0]
+# # different key for each file, we ignore it for now, only interested in values
+# for i in tqdm(range(len(np_dict)//2)):
 #
-                # np_0b = np.load(np_dict["job_{}_N0b".format(i)].path)
+# np_0b = np.load(np_dict["job_{}_N0b".format(i)].path)
 #
-                # LT = np_0b[:, var_names.index("LT")]
-                # HT = np_0b[:, var_names.index("HT")]
-                # n_jets = np_0b[:, var_names.index("n_jets")]
+# LT = np_0b[:, var_names.index("LT")]
+# HT = np_0b[:, var_names.index("HT")]
+# n_jets = np_0b[:, var_names.index("n_jets")]
 #
-                # tot_events += len(np_0b)
-                # signal_events += len(np_0b[(LT > 250) & (HT > 500) & (n_jets > 4)])
+# tot_events += len(np_0b)
+# signal_events += len(np_0b[(LT > 250) & (HT > 500) & (n_jets > 4)])
 #
-            # count_dict = {key: {
-                # "tot_events": tot_events,
-                # "signal_events": signal_events,
-            # }}
-            # print(count_dict)
-            # event_counts.update(count_dict)
-        # #print(event_counts)ä
-        # self.output().dump(event_counts)
-        # #from IPython import embed; embed()
+# count_dict = {key: {
+# "tot_events": tot_events,
+# "signal_events": signal_events,
+# }}
+# print(count_dict)
+# event_counts.update(count_dict)
+# #print(event_counts)ä
+# self.output().dump(event_counts)
+# #from IPython import embed; embed()
 
 
 class GroupCoffeaProcesses(DatasetTask):
