@@ -43,11 +43,13 @@ class DatacardProducer(DatasetTask):
     @law.decorator.safe_output
     def run(self):
         import sys
-        #FIXME: Paths
+
+        # FIXME: Paths
         print("Importing from /nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_2_13/src/CombineHarvester/CombineTools/python3")
         sys.path.append("/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_2_13/src/CombineHarvester/CombineTools/python3")
         import ch
         from utils.datacard import DatacardWriter
+
         # either import the datacard writer or heritage from him
         channel = self.SignalBin.split("_")[0]
         categories = self.make_pairs([self.config_inst.categories.names()])

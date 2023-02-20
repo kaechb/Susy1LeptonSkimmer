@@ -29,6 +29,7 @@ from tasks.pytorch_test import PytorchMulticlass
 
 import utils.PytorchHelp as util
 
+
 class PlotCoffeaHists(ConfigTask):
 
     """
@@ -41,7 +42,8 @@ class PlotCoffeaHists(ConfigTask):
     signalScale = luigi.IntParameter(default=1)
     debug = luigi.BoolParameter(default=False)
     debugDataset = luigi.Parameter(default="data_e_C")  # take a small set to reduce computing time
-    debug_str = luigi.Parameter(default="/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2022_11_24/2017/Data/root/SingleElectron_Run2017C-UL2017_MiniAODv2_NanoAODv9-v1_NANOAOD_1.0.root")#FIXME Paths
+    debug_str = luigi.Parameter(default="/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2022_11_24/2017/Data/root/SingleElectron_Run2017C-UL2017_MiniAODv2_NanoAODv9-v1_NANOAOD_1.0.root")  # FIXME Paths
+
     def requires(self):
         if self.debug:
             return CoffeaProcessor.req(self, processor="Histogramer", workflow="local", debug=True, debugDataset=self.debugDataset, debug_str=self.debug_str)
@@ -63,7 +65,10 @@ class PlotCoffeaHists(ConfigTask):
         self.output().parent.touch()
         uncStyle = {"label": "Stat. Unc.", "hatch": "///", "facecolor": "none", "edgecolor": (0, 0, 0, 0.5), "linewidth": 0}
         dataUncStyle = {"linestyle": "none", "marker": ".", "markersize": 10.0, "color": "k", "elinewidth": 1}
-        line_opts = {"linestyle": "-", "color": "r",}
+        line_opts = {
+            "linestyle": "-",
+            "color": "r",
+        }
         # create pdf object to save figures on separate pages
         with PdfPages(self.output().path) as pdf:
             # plot each hist
@@ -77,7 +82,16 @@ class PlotCoffeaHists(ConfigTask):
                     dataHists = []
                     if self.unblinded:
                         # build canvas for data plotting
-                        fig, (ax, rax) = plt.subplots(2, 1, figsize=(18, 10), sharex=True, gridspec_kw=dict(height_ratios=(3, 1), hspace=0,),)
+                        fig, (ax, rax) = plt.subplots(
+                            2,
+                            1,
+                            figsize=(18, 10),
+                            sharex=True,
+                            gridspec_kw=dict(
+                                height_ratios=(3, 1),
+                                hspace=0,
+                            ),
+                        )
                     else:
                         fig, ax = plt.subplots(figsize=(18, 10))
                     for proc in self.config_inst.processes:
@@ -115,7 +129,7 @@ class PlotCoffeaHists(ConfigTask):
                         dat = dataHists[0].add(dataHists[1])
                         data = dat.group("process", coffea.hist.Cat("process", "data"), {"data": ["data electron", "data muon"]})
                         coffea.hist.plot1d(data, uncStyle=dataUncStyle, ax=ax, clear=False)
-                        coffea.hist.plotratio(data.sum("process"), bg.sum("process"), ax=rax, uncStyle=dataUncStyle, denom_fill_opts={}, guide_opts={},unc="num", clear=False)
+                        coffea.hist.plotratio(data.sum("process"), bg.sum("process"), ax=rax, uncStyle=dataUncStyle, denom_fill_opts={}, guide_opts={}, unc="num", clear=False)
                         rax.set_ylabel("Ratio")
                         rax.set_ylim(0, 2)
                     # declare naming
@@ -138,11 +152,13 @@ class PlotCoffeaHists(ConfigTask):
                     plt.close(fig)
             print("\n", " ---- Created {} pages ----".format(pdf.get_pagecount()), "\n")
 
+
 class ArrayPlotting(CoffeaTask):
     density = luigi.BoolParameter(default=False)
+
     def requires(self):
-        return {sel: CoffeaProcessor.req(self, lepton_selection=sel, workflow="local") for sel in ["Muon"]  }# , "Electron"
-    
+        return {sel: CoffeaProcessor.req(self, lepton_selection=sel, workflow="local") for sel in ["Muon"]}  # , "Electron"
+
     def output(self):
         ending = ".png"
         if self.density:
@@ -204,23 +220,23 @@ class DNNHistoryPlotting(DNNTask):
     """
     opening history callback and plotting curves for training
     """
+
     def requires(self):
-        return (
-            PytorchMulticlass.req(self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout, batch_size=self.batch_size, learning_rate=self.learning_rate))
+        return PytorchMulticlass.req(self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout, batch_size=self.batch_size, learning_rate=self.learning_rate)
 
     def output(self):
         return {"loss_plot": self.local_target("torch_loss_plot.png"), "acc_plot": self.local_target("torch_acc_plot.png")}
 
     def store_parts(self):
         # make plots for each use case
-        return (super(DNNHistoryPlotting, self).store_parts() + (self.analysis_choice,) + (self.n_nodes,) + (self.dropout,) + (self.batch_size,) + (self.learning_rate,))
+        return super(DNNHistoryPlotting, self).store_parts() + (self.analysis_choice,) + (self.n_nodes,) + (self.dropout,) + (self.batch_size,) + (self.learning_rate,)
 
     @law.decorator.timeit(publish_message=True)
     @law.decorator.notify
     @law.decorator.safe_output
     def run(self):
         # retrieve history callback for trainings
-        accuracy_stats = (self.input()[0]["collection"].targets[0]["accuracy_stats"].load())
+        accuracy_stats = self.input()[0]["collection"].targets[0]["accuracy_stats"].load()
         loss_stats = self.input()[0]["collection"].targets[0]["loss_stats"].load()
 
         # read in values, skip first for val since Trainer does a validation step beforehand
@@ -231,7 +247,12 @@ class DNNHistoryPlotting(DNNTask):
         val_acc = accuracy_stats["val"]
 
         self.output()["loss_plot"].parent.touch()
-        plt.plot(np.arange(0, len(val_loss), 1), val_loss, label="loss on valid data", color="orange",)
+        plt.plot(
+            np.arange(0, len(val_loss), 1),
+            val_loss,
+            label="loss on valid data",
+            color="orange",
+        )
         plt.plot(
             np.arange(1, len(train_loss) + 1, 1),
             train_loss,
@@ -264,9 +285,7 @@ class DNNHistoryPlotting(DNNTask):
 
 
 class DNNEvaluationPlotting(DNNTask):
-    normalize = luigi.Parameter(
-        default="true", description="if confusion matrix gets normalized"
-    )
+    normalize = luigi.Parameter(default="true", description="if confusion matrix gets normalized")
 
     def requires(self):
         return dict(
@@ -306,7 +325,6 @@ class DNNEvaluationPlotting(DNNTask):
     @law.decorator.notify
     @law.decorator.safe_output
     def run(self):
-
         # from IPython import embed;embed()
 
         n_variables = len(self.config_inst.variables)
@@ -322,22 +340,16 @@ class DNNEvaluationPlotting(DNNTask):
         X_test = self.input()["data"]["X_test"].load()
         y_test = self.input()["data"]["y_test"].load()
 
-        test_dataset = util.ClassifierDataset(
-            torch.from_numpy(X_test).float(), torch.from_numpy(y_test).float()
-        )
-        test_loader = torch.utils.data.DataLoader(
-            dataset=test_dataset, batch_size=len(y_test)
-        )
+        test_dataset = util.ClassifierDataset(torch.from_numpy(X_test).float(), torch.from_numpy(y_test).float())
+        test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=len(y_test))
 
         # val_loss, val_acc = reconstructed_model.evaluate(X_test, y_test)
         # print("Test accuracy:", val_acc)
 
         y_predictions = []
         with torch.no_grad():
-
             reconstructed_model.eval()
             for X_test_batch, y_test_batch in test_loader:
-
                 y_test_pred = reconstructed_model(X_test_batch)
 
                 y_predictions.append(y_test_pred.numpy())
@@ -437,21 +449,12 @@ class DNNDistributionPlotting(DNNTask):
 
     def store_parts(self):
         # make plots for each use case
-        return (
-            super(DNNDistributionPlotting, self).store_parts()
-            + (self.analysis_choice,)
-            + (self.channel,)
-            + (self.n_layers,)
-            + (self.n_nodes,)
-            + (self.dropout,)
-            + (self.batch_size,)
-        )
+        return super(DNNDistributionPlotting, self).store_parts() + (self.analysis_choice,) + (self.channel,) + (self.n_layers,) + (self.n_nodes,) + (self.dropout,) + (self.batch_size,)
 
     @law.decorator.timeit(publish_message=True)
     @law.decorator.notify
     @law.decorator.safe_output
     def run(self):
-
         n_variables = len(self.config_inst.variables)
         n_processes = len(self.config_inst.get_aux("DNN_process_template").keys())
         all_processes = list(self.config_inst.get_aux("DNN_process_template").keys())
@@ -462,12 +465,8 @@ class DNNDistributionPlotting(DNNTask):
 
         # val_loss, val_acc = reconstructed_model.evaluate(X_test, y_test)
         # print("Test accuracy:", val_acc)
-        test_dataset = util.ClassifierDataset(
-            torch.from_numpy(X_test).float(), torch.from_numpy(y_test).float()
-        )
-        test_loader = torch.utils.data.DataLoader(
-            dataset=test_dataset, batch_size=len(y_test)
-        )
+        test_dataset = util.ClassifierDataset(torch.from_numpy(X_test).float(), torch.from_numpy(y_test).float())
+        test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=len(y_test))
         path = self.input()["model"]["collection"].targets[0]["model"].path
 
         # load complete model
@@ -521,9 +520,7 @@ class DNNDistributionPlotting(DNNTask):
 
         for i in range(n_processes):
             plt.hist(
-                test_predict.detach().numpy()[
-                    np.argmax(test_predict.detach().numpy(), axis=1) == i
-                ][:, i],
+                test_predict.detach().numpy()[np.argmax(test_predict.detach().numpy(), axis=1) == i][:, i],
                 label=all_processes[i],
                 histtype="step",
                 density=True,
@@ -565,7 +562,6 @@ class DNNDistributionPlotting(DNNTask):
         with PdfPages(self.output()["2D_variable_plots"].path) as pdf:
             for i, proc in enumerate(all_processes):
                 for j, var in enumerate(self.config_inst.variables.names()):
-
                     fig = plt.figure()
 
                     plt.hist2d(
@@ -594,28 +590,15 @@ class PlotFeatureImportance(DNNTask):  # , HTCondorWorkflow, law.local
     def requires(self):
         return dict(
             data=ArrayNormalisation.req(self),
-            model=PytorchMulticlass.req(
-                self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout
-            ),
+            model=PytorchMulticlass.req(self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout),
         )
 
     def output(self):
-        return {
-            key: self.local_target(
-                "feature_importance.png".replace(".png", "_process_{}.png".format(key))
-            )
-            for key in self.config_inst.get_aux("DNN_process_template").keys()
-        }
+        return {key: self.local_target("feature_importance.png".replace(".png", "_process_{}.png".format(key))) for key in self.config_inst.get_aux("DNN_process_template").keys()}
 
     def store_parts(self):
         # make plots for each use case
-        return (
-            super(PlotFeatureImportance, self).store_parts()
-            + (self.analysis_choice,)
-            + (self.dropout,)
-            + (self.batch_size,)
-            + (self.learning_rate,)
-        )
+        return super(PlotFeatureImportance, self).store_parts() + (self.analysis_choice,) + (self.dropout,) + (self.batch_size,) + (self.learning_rate,)
 
     def create_branch_map(self):
         # overwrite branch map
@@ -650,12 +633,8 @@ class PlotFeatureImportance(DNNTask):  # , HTCondorWorkflow, law.local
         feature_names = self.config_inst.variables.names()
 
         # FIXME, should be nothardcoded but dependent on some processes
-        for j, key in enumerate(
-            self.config_inst.get_aux("DNN_process_template").keys()
-        ):
-            attr, delta = ig.attribute(
-                test_input_tensor[:2000], target=j, return_convergence_delta=True
-            )
+        for j, key in enumerate(self.config_inst.get_aux("DNN_process_template").keys()):
+            attr, delta = ig.attribute(test_input_tensor[:2000], target=j, return_convergence_delta=True)
             attr = attr.detach().numpy()
 
             # print('IG Attributions:', attr)
@@ -674,9 +653,7 @@ class PlotFeatureImportance(DNNTask):  # , HTCondorWorkflow, law.local
             # if plot:
             plt.figure(figsize=(12, 8))
             plt.bar(x_pos, importances, align="center")
-            plt.xticks(
-                x_pos, feature_names, wrap=True, rotation=30, rotation_mode="anchor"
-            )
+            plt.xticks(x_pos, feature_names, wrap=True, rotation=30, rotation_mode="anchor")
             plt.xlabel(axis_title)
             plt.title(title)
             plt.savefig(self.output()[key].path)
@@ -686,9 +663,7 @@ class PlotNeuronConductance(DNNTask):  # , HTCondorWorkflow, law.local
     def requires(self):
         return dict(
             data=ArrayNormalisation.req(self),
-            model=PytorchMulticlass.req(
-                self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout
-            ),
+            model=PytorchMulticlass.req(self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout),
         )
 
     def output(self):
@@ -696,16 +671,9 @@ class PlotNeuronConductance(DNNTask):  # , HTCondorWorkflow, law.local
 
     def store_parts(self):
         # make plots for each use case
-        return (
-            super(PlotNeuronConductance, self).store_parts()
-            + (self.analysis_choice,)
-            + (self.dropout,)
-            + (self.batch_size,)
-            + (self.learning_rate,)
-        )
+        return super(PlotNeuronConductance, self).store_parts() + (self.analysis_choice,) + (self.dropout,) + (self.batch_size,) + (self.learning_rate,)
 
     def run(self):
-
         # load complete models
         path = self.input()["model"]["collection"].targets[0]["model"].path
         reconstructed_model = torch.load(path)

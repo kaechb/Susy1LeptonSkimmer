@@ -101,7 +101,6 @@ class PytorchMulticlass(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
     @law.decorator.timeit(publish_message=True)
     @law.decorator.safe_output
     def run(self):
-
         tic = time()
 
         # define dimensions, working with aux template for processes
@@ -130,19 +129,11 @@ class PytorchMulticlass(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         device = torch.device("cuda:0" if use_cuda else "cpu")
 
         # datasets are loaded
-        train_dataset = util.ClassifierDataset(
-            torch.from_numpy(X_train).float(), torch.from_numpy(y_train).float()
-        )
-        val_dataset = util.ClassifierDataset(
-            torch.from_numpy(X_val).float(), torch.from_numpy(y_val).float()
-        )
-        test_dataset = util.ClassifierDataset(
-            torch.from_numpy(X_test).float(), torch.from_numpy(y_test).float()
-        )
+        train_dataset = util.ClassifierDataset(torch.from_numpy(X_train).float(), torch.from_numpy(y_train).float())
+        val_dataset = util.ClassifierDataset(torch.from_numpy(X_val).float(), torch.from_numpy(y_val).float())
+        test_dataset = util.ClassifierDataset(torch.from_numpy(X_test).float(), torch.from_numpy(y_test).float())
 
-        self.steps_per_epoch = (
-            n_processes * np.sum(y_test[:, 0] == 1) // self.batch_size
-        )
+        self.steps_per_epoch = n_processes * np.sum(y_test[:, 0] == 1) // self.batch_size
 
         # all in dat
         """
@@ -195,9 +186,7 @@ class PytorchMulticlass(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             means=means,
             stds=stds,
             dropout=self.dropout,
-            class_weights=torch.tensor(
-                list(class_weights.values())
-            ),  # no effect right now
+            class_weights=torch.tensor(list(class_weights.values())),  # no effect right now
             n_nodes=self.n_nodes,
         )
 
@@ -247,16 +236,12 @@ class PytorchMulticlass(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         # replace this loop with model(torch.tensor(X_test)) ?
         # evaluate test set
         with torch.no_grad():
-
             test_epoch_loss = 0
             test_epoch_acc = 0
 
             model.eval()
             for X_test_batch, y_test_batch in test_loader:
-
-                X_test_batch, y_test_batch = X_test_batch.squeeze(
-                    0
-                ), y_test_batch.squeeze(0)
+                X_test_batch, y_test_batch = X_test_batch.squeeze(0), y_test_batch.squeeze(0)
 
                 y_test_pred = model(X_test_batch)
 
@@ -268,11 +253,7 @@ class PytorchMulticlass(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
 
         # print result
         console = Console()
-        console.print(
-            "\n[u][bold magenta]Test accuracy on channel {}:[/bold magenta][/u]".format(
-                self.channel
-            )
-        )
+        console.print("\n[u][bold magenta]Test accuracy on channel {}:[/bold magenta][/u]".format(self.channel))
         console.print(test_acc, "\n")
         if self.debug:
             from IPython import embed
@@ -356,7 +337,6 @@ class PytorchCrossVal(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
                 layer.reset_parameters()
 
     def run(self):
-
         # define dimensions, working with aux template for processes
         n_variables = len(self.config_inst.variables)
         n_processes = len(self.config_inst.get_aux("DNN_process_template").keys())
@@ -370,20 +350,11 @@ class PytorchCrossVal(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         performance = {}
 
         for i in range(self.kfold):
-
             # only load needed data set config in each step
-            X_train = self.input()["data"]["cross_val_{}".format(i)][
-                "cross_val_X_train_{}".format(i)
-            ].load()
-            y_train = self.input()["data"]["cross_val_{}".format(i)][
-                "cross_val_y_train_{}".format(i)
-            ].load()
-            X_val = self.input()["data"]["cross_val_{}".format(i)][
-                "cross_val_X_val_{}".format(i)
-            ].load()
-            y_val = self.input()["data"]["cross_val_{}".format(i)][
-                "cross_val_y_val_{}".format(i)
-            ].load()
+            X_train = self.input()["data"]["cross_val_{}".format(i)]["cross_val_X_train_{}".format(i)].load()
+            y_train = self.input()["data"]["cross_val_{}".format(i)]["cross_val_y_train_{}".format(i)].load()
+            X_val = self.input()["data"]["cross_val_{}".format(i)]["cross_val_X_val_{}".format(i)].load()
+            y_val = self.input()["data"]["cross_val_{}".format(i)]["cross_val_y_val_{}".format(i)].load()
 
             class_weights = self.calc_class_weights(y_train)
 
@@ -402,12 +373,8 @@ class PytorchCrossVal(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             model.apply(self.reset_weights)
 
             # datasets are loaded
-            train_dataset = util.ClassifierDataset(
-                torch.from_numpy(X_train).float(), torch.from_numpy(y_train).float()
-            )
-            val_dataset = util.ClassifierDataset(
-                torch.from_numpy(X_val).float(), torch.from_numpy(y_val).float()
-            )
+            train_dataset = util.ClassifierDataset(torch.from_numpy(X_train).float(), torch.from_numpy(y_train).float())
+            val_dataset = util.ClassifierDataset(torch.from_numpy(X_val).float(), torch.from_numpy(y_val).float())
 
             # define data
             data_collection = util.DataModuleClass(
@@ -437,16 +404,8 @@ class PytorchCrossVal(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             print("--------------------------------")
 
             # for key, value in results.items():
-            print(
-                "Latest accuracy train: {} val: {}".format(
-                    model.accuracy_stats["train"][-1], model.accuracy_stats["val"][-1]
-                )
-            )
-            print(
-                "Latest loss train: {} val: {} \n".format(
-                    model.loss_stats["train"][-1], model.loss_stats["val"][-1]
-                )
-            )
+            print("Latest accuracy train: {} val: {}".format(model.accuracy_stats["train"][-1], model.accuracy_stats["val"][-1]))
+            print("Latest loss train: {} val: {} \n".format(model.loss_stats["train"][-1], model.loss_stats["val"][-1]))
             # sum += value
             # print(f'Average: {sum/len(results.items())} %')
 

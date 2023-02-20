@@ -42,9 +42,7 @@ class TestDummy(DatasetTask, HTCondorWorkflow, law.LocalWorkflow):  # AnalysisTa
         return {i: x for i, x in enumerate(self.x)}
 
     def output(self):
-        return self.local_target(
-            "fileset_{}_{}.json".format(self.random_number, self.branch)
-        )
+        return self.local_target("fileset_{}_{}.json".format(self.random_number, self.branch))
 
     def run(self):
         # make the output directory
@@ -88,13 +86,7 @@ class TestSubmitter(DatasetTask, law.LocalWorkflow):
         randoms = [1, 2, 3]
         rand_dict = {}
         for number in randoms:
-            rand_dict.update(
-                {
-                    number: TestDummy.req(
-                        self, random_number=int(number), workflow="local"
-                    )
-                }
-            )
+            rand_dict.update({number: TestDummy.req(self, random_number=int(number), workflow="local")})
 
         return rand_dict
 

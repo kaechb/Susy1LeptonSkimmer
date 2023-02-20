@@ -10,14 +10,18 @@ Tasks to write config for datasets from target directory
 Then write a fileset directory as an input for coffea
 """
 
+
 class MakeFilesTask(AnalysisTask):
     """
     placeholder task to define common keywords
     """
+
     directory_path = Parameter(default="/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2023_01_18/2017/Data/root")
+
 
 class WriteDatasets(MakeFilesTask):
     """returns a dictionary of datasets and their paths and the number files per parth"""
+
     def output(self):
         return {
             "dataset_dict": self.local_target("datasets_{}.json".format(self.year)),
@@ -49,6 +53,7 @@ class WriteDatasets(MakeFilesTask):
 
 class WriteConfigData(MakeFilesTask):
     """"""
+
     def requires(self):
         return WriteDatasets.req(self, directory_path=self.directory_path)
 

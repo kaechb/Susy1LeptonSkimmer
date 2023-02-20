@@ -49,9 +49,7 @@ class ClassifierDataset(data.Dataset):
 
 # Custom dataset collecting all numpy arrays and bundles them for training
 class DataModuleClass(pl.LightningDataModule):
-    def __init__(
-        self, X_train, y_train, X_val, y_val, batch_size, n_processes, steps_per_epoch
-    ):
+    def __init__(self, X_train, y_train, X_val, y_val, batch_size, n_processes, steps_per_epoch):
         # define data
         self.X_train = X_train
         self.y_train = y_train
@@ -77,9 +75,7 @@ class DataModuleClass(pl.LightningDataModule):
             torch.from_numpy(self.X_train).float(),
             torch.from_numpy(self.y_train).float(),
         )
-        self.val_dataset = ClassifierDataset(
-            torch.from_numpy(self.X_val).float(), torch.from_numpy(self.y_val).float()
-        )
+        self.val_dataset = ClassifierDataset(torch.from_numpy(self.X_val).float(), torch.from_numpy(self.y_val).float())
         # do this somewhere else
         # self.test_dataset = ClassifierDataset(
         #    torch.from_numpy(self.X_test).float(), torch.from_numpy(self.y_test).float()
@@ -116,12 +112,8 @@ class DataModuleClass(pl.LightningDataModule):
 
 
 # torch Multiclassifer
-class MulticlassClassification(
-    pl.LightningModule
-):  # nn.Module core.lightning.LightningModule
-    def __init__(
-        self, num_feature, num_class, means, stds, dropout, class_weights, n_nodes
-    ):
+class MulticlassClassification(pl.LightningModule):  # nn.Module core.lightning.LightningModule
+    def __init__(self, num_feature, num_class, means, stds, dropout, class_weights, n_nodes):
         super(MulticlassClassification, self).__init__()
 
         # custom normalisation layer
@@ -173,7 +165,6 @@ class MulticlassClassification(
         return x
 
     def validation_step(self, batch, batch_idx):
-
         x, y = batch
         logits = self(x)
         # loss = nn.functional.nll_loss()
@@ -312,7 +303,6 @@ class EventBatchSampler(data.Sampler):
         sub_batch_size = self.batch_size // self.n_processes
         # arr_list = []
         for i in range(self.steps_per_epoch):
-
             try:
                 batch_counter
             except:
@@ -320,7 +310,6 @@ class EventBatchSampler(data.Sampler):
 
             indices_for_batch = []
             for j in range(self.n_processes):
-
                 batch_counter[j] += 1
 
                 # get correct indices for process
@@ -339,13 +328,7 @@ class EventBatchSampler(data.Sampler):
                 # indices_for_batch.append(indices[choice])
 
                 # append next sliced batch
-                indices_for_batch.append(
-                    indices[
-                        sub_batch_size
-                        * batch_counter[j] : sub_batch_size
-                        * (batch_counter[j] + 1)
-                    ]
-                )
+                indices_for_batch.append(indices[sub_batch_size * batch_counter[j] : sub_batch_size * (batch_counter[j] + 1)])
 
                 # check[indices[choice]] all True
 

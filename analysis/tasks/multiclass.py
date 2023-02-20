@@ -21,12 +21,9 @@ law.contrib.load("tensorflow")
 
 
 class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
-
     use_sqrt = BoolParameter(default=False)
     norm_class_weights = FloatParameter(default=1)
-    job_number = IntParameter(
-        default=1, description="how many HTCondo jobs are started"
-    )
+    job_number = IntParameter(default=1, description="how many HTCondo jobs are started")
 
     def create_branch_map(self):
         # overwrite branch map
@@ -55,17 +52,7 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             debug_str = ""
 
         # put hyperparameters in path to make an easy optimization search
-        return (
-            super(DNNTrainer, self).store_parts()
-            + (self.analysis_choice,)
-            + (self.channel,)
-            + (self.n_layers,)
-            + (self.n_nodes,)
-            + (self.dropout,)
-            + (self.batch_size,)
-            + (self.learning_rate,)
-            + (debug_str,)
-        )
+        return super(DNNTrainer, self).store_parts() + (self.analysis_choice,) + (self.channel,) + (self.n_layers,) + (self.n_nodes,) + (self.dropout,) + (self.batch_size,) + (self.learning_rate,) + (debug_str,)
 
     def build_model_sequential(self, n_variables, n_processes):
         # try selu or elu https://keras.io/api/layers/activations/?
@@ -73,9 +60,7 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         model = keras.Sequential(
             [
                 # normalise input and keep the values
-                keras.layers.BatchNormalization(
-                    axis=1, trainable=False, input_shape=(n_variables,)
-                ),
+                keras.layers.BatchNormalization(axis=1, trainable=False, input_shape=(n_variables,)),
                 keras.layers.Dense(256, activation=tf.nn.elu),
                 keras.layers.Dropout(0.2),
                 keras.layers.Dense(256, activation=tf.nn.elu),
@@ -94,20 +79,14 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         )
         return model
 
-    def build_model_functional(
-        self, n_variables, n_processes, n_layers=3, n_nodes=256, dropout=0.2
-    ):
+    def build_model_functional(self, n_variables, n_processes, n_layers=3, n_nodes=256, dropout=0.2):
         # build a fully conncected DNN from defined paramters
 
         inp = keras.Input((n_variables,))
-        x = keras.layers.BatchNormalization(
-            axis=1, trainable=False, input_shape=(n_variables,)
-        )(inp)
+        x = keras.layers.BatchNormalization(axis=1, trainable=False, input_shape=(n_variables,))(inp)
 
         for i in range(n_layers):
-            x = keras.layers.Dense(
-                n_nodes, activation=tf.nn.relu, kernel_regularizer="l2"
-            )(x)
+            x = keras.layers.Dense(n_nodes, activation=tf.nn.relu, kernel_regularizer="l2")(x)
             x = keras.layers.Dropout(dropout)(x)
             x = keras.layers.BatchNormalization()(x)
 
@@ -143,19 +122,15 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
             return dict(enumerate(weight_array))
 
     def data_generator(self, X_train, y_train, batch_size, n_processes):
-
         # generate a batch for each step of the epoch, currently drawing random
 
         while True:
-
             arrays, one_hot_labels = [], []
             individual_batch_size = batch_size // n_processes
 
             for i in range(n_processes):
                 arr = X_train[y_train[:, i] == 1]
-                choice = np.random.choice(
-                    np.arange(0, len(arr), 1), size=individual_batch_size, replace=False
-                )
+                choice = np.random.choice(np.arange(0, len(arr), 1), size=individual_batch_size, replace=False)
                 arrays.append(arr[choice])
                 labels = np.zeros((individual_batch_size, n_processes))
                 labels[:, i] = 1
@@ -167,7 +142,6 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
     @law.decorator.timeit(publish_message=True)
     @law.decorator.safe_output
     def run(self):
-
         # TENSORBOARD_PATH = (
         # self.output()["saved_model"].dirname
         # + "/logs/fit/"
@@ -212,9 +186,7 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         # tensorboard = keras.callbacks.TensorBoard(
         # log_dir=TENSORBOARD_PATH, histogram_freq=0, write_graph=True
         # )
-        reduce_lr = keras.callbacks.ReduceLROnPlateau(
-            monitor="val_loss", factor=0.5, patience=25, min_lr=0.001
-        )
+        reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=25, min_lr=0.001)
         stop_of = keras.callbacks.EarlyStopping(
             monitor="val_loss",  # accuracy
             verbose=1,
@@ -281,11 +253,7 @@ class DNNTrainer(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         console = Console()
         # load test dta/labels and evaluate on unseen data
         test_loss, test_acc = model.evaluate(X_test, y_test)
-        console.print(
-            "\n[u][bold magenta]Test accuracy on channel {}:[/bold magenta][/u]".format(
-                self.channel
-            )
-        )
+        console.print("\n[u][bold magenta]Test accuracy on channel {}:[/bold magenta][/u]".format(self.channel))
         console.print(test_acc, "\n")
         self.output()["test_acc"].dump({"test_acc": test_acc})
 
@@ -330,7 +298,6 @@ class DNNHyperParameterOpt(DNNTask, HTCondorWorkflow, law.LocalWorkflow):
         """
 
     def store_parts(self):
-
         return super(DNNHyperParameterOpt, self).store_parts() + (self.analysis_choice,)
 
     def run(self):

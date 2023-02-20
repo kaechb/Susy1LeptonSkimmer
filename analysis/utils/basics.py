@@ -50,16 +50,11 @@ def calc_checksum(*paths, **kwargs):
         if os.path.isfile(path):
             cmd = 'sha1sum "{}"'.format(path)
         elif os.path.isdir(path):
-            cmd = (
-                'files="$( find "{}" -type f {} -print | sort -z )"; '
-                "(for f in $files; do sha1sum $f; done) | sha1sum".format(path, exclude)
-            )
+            cmd = 'files="$( find "{}" -type f {} -print | sort -z )"; ' "(for f in $files; do sha1sum $f; done) | sha1sum".format(path, exclude)
         else:
             raise IOError("file or directory '{}' does not exist".format(path))
 
-        code, out, _ = law.util.interruptable_popen(
-            cmd, stdout=subprocess.PIPE, shell=True, executable="/bin/bash"
-        )
+        code, out, _ = law.util.interruptable_popen(cmd, stdout=subprocess.PIPE, shell=True, executable="/bin/bash")
         if code != 0:
             raise Exception("checksum calculation failed")
 
@@ -69,9 +64,7 @@ def calc_checksum(*paths, **kwargs):
         return sums[0]
     else:
         cmd = 'echo "{}" | sha1sum'.format(",".join(sums))
-        code, out, _ = law.util.interruptable_popen(
-            cmd, stdout=subprocess.PIPE, shell=True, executable="/bin/bash"
-        )
+        code, out, _ = law.util.interruptable_popen(cmd, stdout=subprocess.PIPE, shell=True, executable="/bin/bash")
         if code != 0:
             raise Exception("checksum combination failed")
 

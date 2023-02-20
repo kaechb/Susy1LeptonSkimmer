@@ -24,6 +24,7 @@ class CoffeaTask(DatasetTask):
     """
     token task to define attributes # FIXME: remove absolute paths
     """
+
     processor = Parameter(default="ArrayExporter")
     debug = BoolParameter(default=False)
     debug_dataset = Parameter(default="data_mu_C")  # take a small set to reduce computing time
@@ -33,6 +34,7 @@ class CoffeaTask(DatasetTask):
     data_key = Parameter(default="SingleMuon")
     # parameter with selection we use coffea
     lepton_selection = Parameter(default="Muon")
+
 
 class CoffeaProcessor(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
 
@@ -60,7 +62,11 @@ class CoffeaProcessor(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
         return self.local_target("signal.npy")
 
     def store_parts(self):
-        parts = (self.analysis_choice,self.processor,self.lepton_selection,)
+        parts = (
+            self.analysis_choice,
+            self.processor,
+            self.lepton_selection,
+        )
         return super(CoffeaProcessor, self).store_parts() + parts
 
     @law.decorator.timeit(publish_message=True)
@@ -68,7 +74,7 @@ class CoffeaProcessor(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
         # FIXME mom
         data_dict = self.input()["dataset_dict"].load()  # ["SingleMuon"]  # {self.dataset: [self.file]}
         dataPath = self.input()["dataset_path"].load()
-        # declare processor 
+        # declare processor
         if self.processor == "ArrayExporter":
             processor_inst = ArrayExporter(self, Lepton=self.lepton_selection)
         if self.processor == "Histogramer":
@@ -78,27 +84,35 @@ class CoffeaProcessor(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
         key_name = list(data_dict.keys())[0]
         subset = sorted(data_dict[key_name])
         dataset = key_name.split("_")[0]
-        start =  time.time()
+        start = time.time()
         with up.open(dataPath + "/" + subset[self.branch]) as file:
-            primaryDataset = "MC" 
+            primaryDataset = "MC"
         isData = file["MetaData"]["IsData"].array()[0]
         fileset = {
-            dataset: {"files": [dataPath + "/" + subset[self.branch]],"metadata": {"PD": primaryDataset,"IsData": isData,},}        
+            dataset: {
+                "files": [dataPath + "/" + subset[self.branch]],
+                "metadata": {
+                    "PD": primaryDataset,
+                    "IsData": isData,
+                },
             }
+        }
         if self.debug:
             with up.open(dataPath + "/" + subset[self.branch]) as file:
                 primaryDataset = file["MetaData"]["primaryDataset"].array()[0]
             fileset = {
-                dataset: {"files": [dataPath + "/" + subset[self.branch]],"metadata": {"PD": primaryDataset},}
+                dataset: {
+                    "files": [dataPath + "/" + subset[self.branch]],
+                    "metadata": {"PD": primaryDataset},
+                }
             }
 
         # call imported processor, magic happens here
-        out = processor.run_uproot_job(fileset,treename=treename,processor_instance=processor_inst,executor=processor.iterative_executor,
-                                       executor_args=dict(status=False), chunksize=10000)
+        out = processor.run_uproot_job(fileset, treename=treename, processor_instance=processor_inst, executor=processor.iterative_executor, executor_args=dict(status=False), chunksize=10000)
         # show summary
         console = Console()
         all_events = out["n_events"]["sum_all_events"]
-        total_time =  time.time() - start
+        total_time = time.time() - start
         console.print("\n[u][bold magenta]Summary metrics:[/bold magenta][/u]")
         console.print(f"* Total time: {total_time:.2f}s")
         console.print(f"* Total events: {all_events:e}")
@@ -117,7 +131,6 @@ class CoffeaProcessor(CoffeaTask, HTCondorWorkflow, law.LocalWorkflow):
 
 
 class SubmitCoffeaPerDataset(CoffeaTask):  # , HTCondorWorkflow , law.LocalWorkflow
-
     def requires(self):
         return WriteDatasets.req(self)
 
@@ -139,13 +152,18 @@ class SubmitCoffeaPerDataset(CoffeaTask):  # , HTCondorWorkflow , law.LocalWorkf
         print("\nIn Submit\n")
         # goal of this task is to fill a dict with all the coffea locations
         joblist = {}
-        testDict = self.input()["dataset_dict"].load() 
+        testDict = self.input()["dataset_dict"].load()
         dataPath = self.input()["dataset_path"].load()
         jobNumberDict = self.input()["job_number_dict"].load()
         # doing a loop for each small file on the naf
         for key in self.job_dict.keys():
             for sel in ["Muon", "Electron"]:
-                cof_proc = CoffeaProcessor.req(self,processor=self.processor,data_key=key, lepton_selection=sel,)
+                cof_proc = CoffeaProcessor.req(
+                    self,
+                    processor=self.processor,
+                    data_key=key,
+                    lepton_selection=sel,
+                )
                 # find output of the coffea processor
                 outTarget = cof_proc.localize_output().args[0]["collection"].targets
                 newTarget = {}
@@ -162,13 +180,10 @@ class SubmitCoffeaPerDataset(CoffeaTask):  # , HTCondorWorkflow , law.LocalWorkf
                 test = yield cof_proc
         self.output().dump(joblist)
 
-class CollectCoffeaOutput(CoffeaTask):
 
+class CollectCoffeaOutput(CoffeaTask):
     def requires(self):
-        return {"{}_{}".format(sel, dat): 
-                CoffeaProcessor.req(self,data_key=dat,lepton_selection=sel,job_number=self.job_dict[dat])
-            for sel in ["Muon", "Electron"] for dat in ["SingleMuon", "MET", "SingleElectron"]
-        }
+        return {"{}_{}".format(sel, dat): CoffeaProcessor.req(self, data_key=dat, lepton_selection=sel, job_number=self.job_dict[dat]) for sel in ["Muon", "Electron"] for dat in ["SingleMuon", "MET", "SingleElectron"]}
 
     def output(self):
         return self.local_target("event_counts.json")
@@ -179,7 +194,7 @@ class CollectCoffeaOutput(CoffeaTask):
     @law.decorator.timeit(publish_message=True)
     @law.decorator.safe_output
     def run(self):
-        inDict = self.input()  
+        inDict = self.input()
         # making clear which index belongs to which variable
         varNames = self.config_inst.variables.names()
         print(varNames)
@@ -198,7 +213,7 @@ class CollectCoffeaOutput(CoffeaTask):
                 n_jets = np_0b[:, varNames.index("n_jets")]
                 # at some point, we have to define the signal regions
                 LT1 = (LT > 250) & (LT < 450) & (Dphi > 1) & (HT > 500)
-                LT2 = (LT > 450) & (LT < 650)& (Dphi > 0.75) & (HT > 500)
+                LT2 = (LT > 450) & (LT < 650) & (Dphi > 0.75) & (HT > 500)
                 LT3 = (LT > 650) & (Dphi > 0.75) & (HT > 500)
                 LT1_nj5 = np_0b[LT1 & (n_jets == 5)]
                 LT1_nj67 = np_0b[LT1 & (n_jets > 5) & (n_jets < 8)]
@@ -209,28 +224,29 @@ class CollectCoffeaOutput(CoffeaTask):
                 LT3_nj5 = np_0b[LT3 & (n_jets == 5)]
                 LT3_nj67 = np_0b[LT3 & (n_jets > 5) & (n_jets < 8)]
                 LT3_nj8i = np_0b[LT3 & (n_jets > 7)]
-                signal_events += (len(LT1_nj5) + len(LT1_nj67) + len(LT1_nj8i) + len(LT2_nj5) + len(LT2_nj67) + len(LT2_nj8i) + len(LT3_nj5) + len(LT3_nj67) + len(LT3_nj8i))
+                signal_events += len(LT1_nj5) + len(LT1_nj67) + len(LT1_nj8i) + len(LT2_nj5) + len(LT2_nj67) + len(LT2_nj8i) + len(LT3_nj5) + len(LT3_nj67) + len(LT3_nj8i)
                 tot_events += len(np_0b)
-            count_dict = {
-                key: {"tot_events": tot_events, "signal_events": signal_events}
-            }
+            count_dict = {key: {"tot_events": tot_events, "signal_events": signal_events}}
             print(count_dict)
             eventCounts.update(count_dict)
         self.output().dump(eventCounts)
+
 
 class GroupCoffeaProcesses(DatasetTask):
     """
     Task to group coffea hist together if needed (e.g. get rid of an axis)
     Or reproduce root files for Combine
     """
+
     # histogram naming template:
     template = "{variable}_{process}_{category}"
+
     def requires(self):
         return CoffeaProcessor.req(self, processor="Histogramer")
 
     def output(self):
         return self.local_target("legacy_hists.root")
-        
+
     def store_parts(self):
         return super(GroupCoffeaProcesses, self).store_parts() + (self.analysis_choice,)
 
@@ -238,6 +254,7 @@ class GroupCoffeaProcesses(DatasetTask):
     @law.decorator.safe_output
     def run(self):
         import uproot3 as up3
+
         hists = self.input()["collection"][0].load()
         datasets = self.config_inst.datasets.names()
         categories = self.config_inst.categories.names()

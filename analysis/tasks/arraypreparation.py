@@ -7,6 +7,7 @@ import luigi
 import numpy as np
 import operator
 import sklearn.model_selection as skm
+
 # other modules
 from tasks.basetasks import ConfigTask
 from tasks.coffea import CoffeaProcessor
@@ -18,14 +19,19 @@ class ArrayNormalisation(ConfigTask):
     Task to modify the Arrays produced by coffea
     Current idea: normalise them to prepare for the DNN
     """
+
     channel = luigi.Parameter(default="N1b_CR", description="channel to prepare")
+
     def requires(self):
-        return {"debug": CoffeaProcessor.req(self, processor="ArrayExporter", debug=True, workflow="local"),
+        return {
+            "debug": CoffeaProcessor.req(self, processor="ArrayExporter", debug=True, workflow="local"),
             # comment out following line if just interested in debug
             "complete": CoffeaProcessor.req(self, processor="ArrayExporter"),
         }
+
     def path(self):
         return "/nfs/dust/cms/group/susy-desy/Susy1Lepton/0b/Run2_pp_13TeV_2016/CoffeaProcessor/testDNN/0b/ArrayExporter"
+
     def output(self):
         out = {}
         out.update(
@@ -42,8 +48,10 @@ class ArrayNormalisation(ConfigTask):
             }
         )
         return out
+
     def normalise(self, array):
         return ((array - array.mean()) / array.std(), array.mean(), array.std())
+
     def calc_norm_parameter(self, data):
         # return values to shift distribution to normal
         dat = np.swapaxes(data, 0, 1)
@@ -52,6 +60,7 @@ class ArrayNormalisation(ConfigTask):
             means.append(var.mean())
             stds.append(var.std())
         return np.array(means), np.array(stds)
+
     def run(self):
         self.output()["oneHotLabels"].parent.touch()
         # load inputs from ArrayExporter
@@ -95,6 +104,7 @@ class ArrayNormalisation(ConfigTask):
         for key in self.output().keys():
             self.output()[key].dump(eval(key))
 
+
 class CrossValidationPrep(ConfigTask):
     kfold = luigi.IntParameter(default=5)
     """
@@ -102,8 +112,10 @@ class CrossValidationPrep(ConfigTask):
     Current idea: normalise them to prepare for the DNN
     """
     channel = luigi.Parameter(default="N1b_CR", description="channel to prepare")
+
     def requires(self):
         return CoffeaProcessor.req(self, processor="ArrayExporter")
+
     def output(self):
         out = {}
         out.update(
@@ -113,7 +125,8 @@ class CrossValidationPrep(ConfigTask):
                     "cross_val_trainLabels_{}".format(i): self.local_target("cross_val_trainLabels_{}.npy".format(i)),
                     "cross_val_validation_{}".format(i): self.local_target("cross_val_validation_{}.npy".format(i)),
                     "cross_val_validationLabels_{}".format(i): self.local_target("cross_val_validationLabels_{}.npy".format(i)),
-                } for i in range(self.kfold)
+                }
+                for i in range(self.kfold)
             }
         )
         return out

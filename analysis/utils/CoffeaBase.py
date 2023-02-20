@@ -53,8 +53,9 @@ class BaseProcessor(processor.ProcessorABC):
     # def GetDatasetShift(self, events):
     #     return events.metadata["dataset"][1]
 
+
 class BaseSelection:
-    hl = ("MetPt","W_mt")
+    hl = ("MetPt", "W_mt")
 
     # dtype = np.float32
     debug_dataset = (
@@ -62,15 +63,15 @@ class BaseSelection:
     )
 
     def ObjGetSelectedVariables(self, X, n, extra=()):
-        #TODO
+        # TODO
         pass
 
     def GetSelectedVariables(self, X):
-        return dict(hl=np.stack([ak.to_numpy(X[var]).astype(np.float32) for var in self.config.variables.names()],axis=-1))
+        return dict(hl=np.stack([ak.to_numpy(X[var]).astype(np.float32) for var in self.config.variables.names()], axis=-1))
 
     def AddToSelection(self, selection, name, array):
         return selection.add(name, ak.to_numpy(array, allow_missing=True))
-    
+
     def GetBaseVariables(self, events):
         ntFatJets = ak.fill_none(ak.firsts(events.FatJetDeepTagTvsQCD), value=0)
         nWFatJets = ak.fill_none(ak.firsts(events.FatJetDeepTagWvsQCD), value=0)
@@ -105,7 +106,7 @@ class BaseSelection:
         zero_b = nbJets == 0
         multi_b = nbJets >= 1
         return locals()
-    
+
     def BaseSelect(self, events, product):
         # set up stuff to fill
         output = self.accumulator.identity()
@@ -119,9 +120,9 @@ class BaseSelection:
         process = self.config.get_process(dataset)
         sortedJets = ak.mask(events.JetPt, (events.nJet >= 3))
         goodJets = (events.JetPt > 30) & (abs(events.JetEta) < 2.4)
-        baselineSelection = ((sortedJets[:, 1] > 80) & (product.LT > 250) & (product.HT > 500) & (ak.num(goodJets) >= 3) & ~(events.IsoTrackVeto))
+        baselineSelection = (sortedJets[:, 1] > 80) & (product.LT > 250) & (product.HT > 500) & (ak.num(goodJets) >= 3) & ~(events.IsoTrackVeto)
         # prevent double counting in data
-        doubleCounting_XOR = (((events.metadata["PD"] == "isSingleElectron") & events.HLT_EleOr) | ((events.metadata["PD"] == "isSingleMuon") & events.HLT_MuonOr & ~events.HLT_EleOr) | ((events.metadata["PD"] == "isMet") & events.HLT_MetOr & ~events.HLT_MuonOr & ~events.HLT_EleOr))
+        doubleCounting_XOR = ((events.metadata["PD"] == "isSingleElectron") & events.HLT_EleOr) | ((events.metadata["PD"] == "isSingleMuon") & events.HLT_MuonOr & ~events.HLT_EleOr) | ((events.metadata["PD"] == "isMet") & events.HLT_MetOr & ~events.HLT_MuonOr & ~events.HLT_EleOr)
         self.AddToSelection(selection, "doubleCounting_XOR", doubleCounting_XOR)
         self.AddToSelection((selection), "HLT_Or", events.HLT_MuonOr | events.HLT_MetOr | events.HLT_EleOr)
         self.AddToSelection((selection), "baselineSelection", ak.fill_none(ak.firsts(baselineSelection), False))
@@ -131,11 +132,11 @@ class BaseSelection:
         if not process.is_data:
             weights.add("xSection", process.xSection[13.0].nominal)
         common = ["baselineSelection", "HLT_Or"]  # "HLT_MuonOr", "HLT_MetOr"]
-        categories = dict(N0b = ["zero_b"], N1ib = ["multi_b"])
+        categories = dict(N0b=["zero_b"], N1ib=["multi_b"])
         return locals()
-    
+
     def GetMuonVariables(self, events):
-        # leptons variables 
+        # leptons variables
         nMuon = events.nMuon
         leadMuonPt = ak.fill_none(ak.firsts(events.MuonPt[:, 0:1]), 0)
         leadMuonEta = ak.fill_none(ak.firsts(events.MuonEta[:, 0:1]), 0)
@@ -151,7 +152,7 @@ class BaseSelection:
         return locals()
 
     def GetElectronVariables(self, events):
-        # leptons variables 
+        # leptons variables
         nElectron = events.nElectron
         leadElectronPt = ak.fill_none(ak.firsts(events.ElectronPt[:, 0:1]), 0)
         leadElectronEta = ak.fill_none(ak.firsts(events.ElectronEta[:, 0:1]), 0)
@@ -165,6 +166,7 @@ class BaseSelection:
         genElectronEta = events.GenElectronEta
         genElectronMass = events.GenElectronMass
         return locals()
+
 
 class ArrayAccumulator(column_accumulator):
     """column_accumulator with delayed concatenate"""
@@ -195,17 +197,13 @@ class ArrayAccumulator(column_accumulator):
 
 
 class Histogramer(BaseProcessor, BaseSelection):
-
     def variables(self):
         return self.config.variables
 
     def __init__(self, task):
         super().__init__(task)
 
-        self._accumulator["histograms"] = dict_accumulator(
-            {var.name: hist.Hist("Counts", self.datasetAxis, self.categoryAxis, 
-                                 hist.Bin(var.name, var.x_title, var.binning[0], var.binning[1], var.binning[2])) for var in self.variables()
-            })
+        self._accumulator["histograms"] = dict_accumulator({var.name: hist.Hist("Counts", self.datasetAxis, self.categoryAxis, hist.Bin(var.name, var.x_title, var.binning[0], var.binning[1], var.binning[2])) for var in self.variables()})
 
     @property
     def accumulator(self):
@@ -256,16 +254,11 @@ class ArrayExporter(BaseProcessor, BaseSelection):
         selection = select_output.get("selection")
         categories = select_output.get("categories")
         # from IPython import embed;embed()
-        return (
-            {cat: selection.all(*cuts) for cat, cuts in categories.items()}
-            if selection and categories
-            else {"all": slice(None)}
-        )
+        return {cat: selection.all(*cuts) for cat, cuts in categories.items()} if selection and categories else {"all": slice(None)}
 
     def select(self, events):  # , unc, shift):
         out = super().BaseSelect(events)
         if self.Lepton == "Muon":
-            
             out.update(**super().GetMuonVariables(events))  # , unc, shift)
         if self.Lepton == "Electron":
             out.update(**super().ElectronSelect(events))  # , unc, shift)
@@ -278,10 +271,7 @@ class ArrayExporter(BaseProcessor, BaseSelection):
         weights = select_output["weights"]
         output = select_output["output"]
         selectedVariables = self.GetSelectedVariables(select_output)
-        output["selectedVariables"] = dict_accumulator(
-            {category + "_" + select_output["dataset"]: dict_accumulator(
-                {key: ArrayAccumulator(array[cut, ...]) for key, array in selectedVariables.items()})
-            for category, cut in categories.items()})
+        output["selectedVariables"] = dict_accumulator({category + "_" + select_output["dataset"]: dict_accumulator({key: ArrayAccumulator(array[cut, ...]) for key, array in selectedVariables.items()}) for category, cut in categories.items()})
         return output
 
     def postprocess(self, accumulator):

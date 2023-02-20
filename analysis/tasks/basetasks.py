@@ -12,9 +12,9 @@ import order as od
 import importlib
 import math
 from utils.sandbox import CMSSWSandboxTask
+
 # define which implemented loaders we want to use
-law.contrib.load("numpy", "tasks", "root", "htcondor", "hdf5", "coffea", "matplotlib"
-)
+law.contrib.load("numpy", "tasks", "root", "htcondor", "hdf5", "coffea", "matplotlib")
 """
 Collection of different standard task definition, each extending the definitions
 -Basetask defines basic functions
@@ -39,7 +39,7 @@ class BaseTask(law.Task):
     def local_path(self, *path):
         parts = [str(p) for p in self.store_parts() + path]
         return os.path.join("/nfs/dust/cms/group/susy-desy/Susy1Lepton", *parts)
-        
+
     # def wlcg_path(self, *path):
     # parts = [str(p) for p in self.store_parts() + path]
     # return os.path.join(*parts)
@@ -55,6 +55,7 @@ class BaseTask(law.Task):
     # cls = law.wlcg.WLCGFileTarget if args else law.wlcg.WLCGDirectoryTarget
     # return cls(self.wlcg_path(*args), **kwargs)
 
+
 class CampaignTask(BaseTask):
     year = luigi.Parameter(description="Year", default="2017")
     config = luigi.Parameter(default="SUSY_1lep_ML", description="current analysis")
@@ -63,9 +64,7 @@ class CampaignTask(BaseTask):
     def __init__(self, *args, **kwargs):
         super(CampaignTask, self).__init__(*args, **kwargs)
         self.campaign_name = "Run2_pp_13TeV_{}".format(self.year)
-        self.campaign_inst = importlib.import_module(
-            "config.{}".format(self.campaign_name)
-        ).campaign
+        self.campaign_inst = importlib.import_module("config.{}".format(self.campaign_name)).campaign
 
     def store_parts(self):
         parts = (self.analysis_choice, self.campaign_name, self.__class__.__name__)
@@ -147,9 +146,7 @@ class ShiftTask(ConfigTask):
         # shift known to config?
         config_inst = od.Config(cls.config)
         if params["shift"] not in config_inst.shifts:
-            raise Exception(
-                "shift {} unknown to config {}".format(params["shift"], config_inst)
-            )
+            raise Exception("shift {} unknown to config {}".format(params["shift"], config_inst))
         # check if the shift is known to the task
         if params["shift"] in cls.shifts:
             params["effective_shift"] = params["shift"]
@@ -167,10 +164,7 @@ class ShiftTask(ConfigTask):
 
 
 class DatasetTask(ConfigTask):  # ShiftTask
-
-    dataset = luigi.Parameter(
-        default="TTJets_sl_fromt", description="the dataset name, default: "
-    )
+    dataset = luigi.Parameter(default="TTJets_sl_fromt", description="the dataset name, default: ")
 
     # @classmethod
     # def modify_param_values(cls, params):
@@ -273,4 +267,3 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     # kwargs = law.util.merge_dicts(
     # self.htcondor_job_manager_defaults, kwargs)
     # return HTCondorJobManagerRWTH(**kwargs)
-

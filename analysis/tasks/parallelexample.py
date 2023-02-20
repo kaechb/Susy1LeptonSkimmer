@@ -27,6 +27,7 @@ taken from
 https://github.com/riga/law/tree/master/examples/parallel_optimization
 """
 
+
 class Optimizer(DatasetTask, law.LocalWorkflow):
     """
     Workflow that runs optimization.
@@ -72,9 +73,7 @@ class Optimizer(DatasetTask, law.LocalWorkflow):
 
         optimizer.tell(x, y)
 
-        print(
-            "minimum after {} iterations: {}".format(self.branch + 1, min(optimizer.yi))
-        )
+        print("minimum after {} iterations: {}".format(self.branch + 1, min(optimizer.yi)))
 
         with self.output().localize("w") as tmp:
             tmp.dump(optimizer)
@@ -107,10 +106,7 @@ class OptimizerPlot(DatasetTask, law.LocalWorkflow):
         return Optimizer.req(self)
 
     def has_fitted_model(self):
-        return (
-            self.plot_objective
-            and (self.branch + 1) * self.n_parallel >= self.n_initial_points
-        )
+        return self.plot_objective and (self.branch + 1) * self.n_parallel >= self.n_initial_points
 
     def output(self):
         collection = {
@@ -119,9 +115,7 @@ class OptimizerPlot(DatasetTask, law.LocalWorkflow):
         }
 
         if self.has_fitted_model():
-            collection["objective"] = self.local_target(
-                "objective_{}.pdf".format(self.branch)
-            )
+            collection["objective"] = self.local_target("objective_{}.pdf".format(self.branch))
 
         return law.SiblingFileCollection(collection)
 
