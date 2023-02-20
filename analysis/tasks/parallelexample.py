@@ -27,7 +27,6 @@ taken from
 https://github.com/riga/law/tree/master/examples/parallel_optimization
 """
 
-
 class Optimizer(DatasetTask, law.LocalWorkflow):
     """
     Workflow that runs optimization.

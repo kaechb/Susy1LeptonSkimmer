@@ -29,7 +29,6 @@ from tasks.pytorch_test import PytorchMulticlass
 
 import utils.PytorchHelp as util
 
-
 class PlotCoffeaHists(ConfigTask):
 
     """
@@ -37,34 +36,21 @@ class PlotCoffeaHists(ConfigTask):
     Utility for doing log scale, data comparison and only debug plotting
     """
 
-    log_scale = luigi.BoolParameter()
+    logScale = luigi.BoolParameter()
     unblinded = luigi.BoolParameter()
-    scale_signal = luigi.IntParameter(default=1)
+    signalScale = luigi.IntParameter(default=1)
     debug = luigi.BoolParameter(default=False)
-    debug_dataset = luigi.Parameter(
-        default="data_e_C"
-    )  # take a small set to reduce computing time
-    debug_str = luigi.Parameter(
-        default="/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2022_11_24/2017/Data/root/SingleElectron_Run2017C-UL2017_MiniAODv2_NanoAODv9-v1_NANOAOD_1.0.root"
-    )
-
+    debugDataset = luigi.Parameter(default="data_e_C")  # take a small set to reduce computing time
+    debug_str = luigi.Parameter(default="/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_12_1_0/Batch/2022_11_24/2017/Data/root/SingleElectron_Run2017C-UL2017_MiniAODv2_NanoAODv9-v1_NANOAOD_1.0.root")#FIXME Paths
     def requires(self):
         if self.debug:
-            return CoffeaProcessor.req(
-                self,
-                processor="Histogramer",
-                workflow="local",
-                debug=True,
-                debug_dataset=self.debug_dataset,
-                debug_str=self.debug_str,
-            )
-
+            return CoffeaProcessor.req(self, processor="Histogramer", workflow="local", debug=True, debugDataset=self.debugDataset, debug_str=self.debug_str)
         else:
             return CoffeaProcessor.req(self, processor="Histogramer")
 
     def output(self):
         path = ""
-        if self.log_scale:
+        if self.logScale:
             path += "_log"
         if self.unblinded:
             path += "_data"
@@ -75,231 +61,88 @@ class PlotCoffeaHists(ConfigTask):
     def run(self):
         inp = self.input()["collection"][0].load()
         self.output().parent.touch()
-
-        # setting style
-        # plt.rcParams.update({
-        # "text.usetex": True,
-        # "font.family": "sans-serif",
-        # "font.sans-serif": ["Helvetica"]})
-
-        # declare sytling options
-        error_opts = {
-            "label": "Stat. Unc.",
-            "hatch": "///",
-            "facecolor": "none",
-            "edgecolor": (0, 0, 0, 0.5),
-            "linewidth": 0,
-        }
-        data_err_opts = {
-            "linestyle": "none",
-            "marker": ".",
-            "markersize": 10.0,
-            "color": "k",
-            "elinewidth": 1,
-        }
-        line_opts = {
-            "linestyle": "-",
-            "color": "r",
-        }
-
+        uncStyle = {"label": "Stat. Unc.", "hatch": "///", "facecolor": "none", "edgecolor": (0, 0, 0, 0.5), "linewidth": 0}
+        dataUncStyle = {"linestyle": "none", "marker": ".", "markersize": 10.0, "color": "k", "elinewidth": 1}
+        line_opts = {"linestyle": "-", "color": "r",}
         # create pdf object to save figures on separate pages
         with PdfPages(self.output().path) as pdf:
-
-            # from IPython import embed;embed()
             # plot each hist
             for var in tqdm(self.config_inst.variables, unit="variable"):
-                # print(var.get_full_x_title())
                 hists = inp[var.name]
                 categories = [h.name for h in hists.identifiers("category")]
-
                 for cat in categories:
-
                     # lists for collecting and sorting hists
-                    bg_hists = []
-                    hists_attr = []
-                    data_hists = []
-
-                    # enlargen figure
-                    # plt.figure(figsize=(8, 6), dpi=80)
-
+                    bgHists = []
+                    histAttributes = []
+                    dataHists = []
                     if self.unblinded:
                         # build canvas for data plotting
-                        fig, (ax, rax) = plt.subplots(
-                            2,
-                            1,
-                            figsize=(18, 10),
-                            sharex=True,
-                            gridspec_kw=dict(
-                                height_ratios=(3, 1),
-                                hspace=0,
-                            ),
-                        )
-
+                        fig, (ax, rax) = plt.subplots(2, 1, figsize=(18, 10), sharex=True, gridspec_kw=dict(height_ratios=(3, 1), hspace=0,),)
                     else:
                         fig, ax = plt.subplots(figsize=(18, 10))
-
                     for proc in self.config_inst.processes:
                         # unpack the different coffea hists and regroup them
                         if "data" in proc.name and self.unblinded:
-                            child_hists = hists[
-                                [p[0].name for p in proc.walk_processes()], cat
-                            ]
-                            mapping = {
-                                proc.label: [
-                                    p[0].name
-                                    for p in proc.walk_processes()
-                                    if not "B" in p[0].name
-                                ]
-                            }
-                            grouped = child_hists.group(
-                                "dataset",
-                                coffea.hist.Cat("process", proc.label_short),
-                                mapping,
-                            ).integrate("category")
-
-                            data_hists.append(grouped)
-
+                            childHists = hists[[p[0].name for p in proc.walk_processes()], cat]
+                            mapping = {proc.label: [p[0].name for p in proc.walk_processes() if not "B" in p[0].name]}
+                            grouped = childHists.group("dataset", coffea.hist.Cat("process", proc.label_short), mapping).integrate("category")
+                            dataHists.append(grouped)
                         if not self.debug and not "data" in proc.name:
                             # for each process, map childs together to plot in one, get rid of cat axis
-                            child_hists = hists[
-                                [p[0].name for p in proc.walk_processes()], cat
-                            ]
-                            mapping = {
-                                proc.label: [p[0].name for p in proc.walk_processes()]
-                            }
-                            # a = child_hists.sum("dataset", overflow='none')
-                            # from IPython import embed;embed()
-
-                            # bg_hists.append()
-                            # hist_attr.append([proc.label, proc.color])
-                            # a=child_hists.sum("dataset", overflow='none').project(var.name)
-                            # a.axes()[0].label = proc.label
-                            grouped = child_hists.group(
-                                "dataset",
-                                coffea.hist.Cat("process", proc.label_short),
-                                mapping,
-                            ).integrate("category")
-
-                            bg_hists.append(grouped)
-                            hists_attr.append(proc.color)
-
+                            childHists = hists[[p[0].name for p in proc.walk_processes()], cat]
+                            mapping = {proc.label: [p[0].name for p in proc.walk_processes()]}
+                            grouped = childHists.group("dataset", coffea.hist.Cat("process", proc.label_short), mapping).integrate("category")
+                            bgHists.append(grouped)
+                            histAttributes.append(proc.color)
                         if self.debug:
-                            # from IPython import embed;embed()
                             dat = hists.identifiers("dataset")
                             bg = hists[(str(dat[0]), cat)].integrate("category")
-                            # for dat in hists.identifiers("dataset"):
-
                     if not self.debug:
-                        bg = bg_hists[0]
-                        for i in range(1, len(bg_hists)):
-                            bg.add(bg_hists[i])
+                        bg = bgHists[0]
+                        for i in range(1, len(bgHists)):
+                            bg.add(bgHists[i])
 
                     # order the processes by magnitude of integral
-                    order_lut = bg.integrate(var.name).values()
-                    bg_order = sorted(order_lut.items(), key=operator.itemgetter(1))
-                    order = [name[0][0] for name in bg_order]
-
+                    order = bg.integrate(var.name).values()
+                    bgOrder = sorted(order.items(), key=operator.itemgetter(1))
+                    order = [name[0][0] for name in bgOrder]
                     # plot bg
-                    coffea.hist.plot1d(
-                        # inp[var.name].integrate("category"),
-                        bg,
-                        ax=ax,
-                        stack=True,
-                        overflow="none",
-                        fill_opts=dict(color=[col for col in hists_attr]),
-                        order=order,
-                        # fill_opts=hists_attr,   #dict(color=proc.color),
-                        # legend_opts=dict(proc.label)
-                        clear=False,
-                        # overlay="dataset",
-                    )
+                    coffea.hist.plot1d(bg, ax=ax, stack=True, overflow="none", fill_opts=dict(color=[col for col in histAttributes]), order=order, clear=False)
                     hep.set_style("CMS")
-                    hep.cms.label(
-                        llabel="Work in progress",
-                        lumi=np.round(self.config_inst.get_aux("lumi") / 1000.0, 2),
-                        loc=0,
-                        ax=ax,
-                    )
+                    hep.cms.label(llabel="Work in progress", lumi=np.round(self.config_inst.get_aux("lumi") / 1000.0, 2), loc=0, ax=ax)
                     if self.unblinded:
                         # normally, we have only two kinds of data, if more, adapt
-                        dat = data_hists[0].add(data_hists[1])
-                        data = dat.group(
-                            "process",
-                            coffea.hist.Cat("process", "data"),
-                            {"data": ["data electron", "data muon"]},
-                        )
-                        coffea.hist.plot1d(
-                            data,  # .project( "process", varName),
-                            # overlay="process",
-                            error_opts=data_err_opts,
-                            ax=ax,
-                            # overflow="none",
-                            # binwnorm=True,
-                            clear=False,
-                        )
-                        coffea.hist.plotratio(
-                            data.sum("process"),
-                            bg.sum("process"),
-                            ax=rax,
-                            error_opts=data_err_opts,
-                            denom_fill_opts={},
-                            guide_opts={},
-                            unc="num",
-                            clear=False,
-                        )
+                        dat = dataHists[0].add(dataHists[1])
+                        data = dat.group("process", coffea.hist.Cat("process", "data"), {"data": ["data electron", "data muon"]})
+                        coffea.hist.plot1d(data, uncStyle=dataUncStyle, ax=ax, clear=False)
+                        coffea.hist.plotratio(data.sum("process"), bg.sum("process"), ax=rax, uncStyle=dataUncStyle, denom_fill_opts={}, guide_opts={},unc="num", clear=False)
                         rax.set_ylabel("Ratio")
                         rax.set_ylim(0, 2)
-
                     # declare naming
-                    leg = ax.legend(
-                        title="{0}: {1}".format(cat, var.x_title),
-                        ncol=1,
-                        loc="upper left",
-                        bbox_to_anchor=(1, 1),
-                        borderaxespad=0,
-                    )
-
-                    if self.log_scale:
+                    leg = ax.legend(title="{0}: {1}".format(cat, var.x_title), ncol=1, loc="upper left", bbox_to_anchor=(1, 1), borderaxespad=0)
+                    if self.logScale:
                         ax.set_yscale("log")
                         ax.set_ylim(0.0001, 1e12)
-                        # FIXME be careful with logarithmic ratios
-                        # if self.unblinded:
-                        #    rax.set_yscale("log")
-                        #    rax.set_ylim(0.0001, 1e0)
-
                     ax.set_xlabel(var.get_full_x_title())
                     ax.set_ylabel(var.get_full_y_title())
                     ax.autoscale(axis="x", tight=True)
-
                     if self.unblinded:
                         rax.set_xlabel(var.get_full_x_title())
                         rax.set_ylabel("Ratio")
                         rax.autoscale(axis="x", tight=True)
-
                     plt.tight_layout()
                     pdf.savefig(fig)
-
                     ax.cla()
                     if self.unblinded:
                         rax.cla()
                     plt.close(fig)
-
             print("\n", " ---- Created {} pages ----".format(pdf.get_pagecount()), "\n")
-
 
 class ArrayPlotting(CoffeaTask):
     density = luigi.BoolParameter(default=False)
-
     def requires(self):
-        return {
-            sel: CoffeaProcessor.req(
-                self,
-                lepton_selection=sel,
-                workflow="local",
-            )
-            for sel in ["Muon"]  # , "Electron"]
-        }
-
+        return {sel: CoffeaProcessor.req(self, lepton_selection=sel, workflow="local") for sel in ["Muon"]  }# , "Electron"
+    
     def output(self):
         ending = ".png"
         if self.density:
@@ -318,48 +161,29 @@ class ArrayPlotting(CoffeaTask):
     @law.decorator.timeit(publish_message=True)
     @law.decorator.safe_output
     def run(self):
-        in_dict = self.input()  # ["collection"].targets
-
+        inDict = self.input()  # ["collection"].targets
         # making clear which index belongs to which variable
-        var_names = self.config_inst.variables.names()
+        varNames = self.config_inst.variables.names()
         # create dir
-        print(var_names)
-        # signal_events = 0
+        print(varNames)
         for var in tqdm(self.config_inst.variables):
             # new canvas for each variable
             fig, ax = plt.subplots(figsize=(18, 10))
             hep.set_style("CMS")
-            hep.cms.label(
-                llabel="Work in progress",
-                loc=0,
-                ax=ax,
-            )
+            hep.cms.label(llabel="Work in progress", loc=0, ax=ax)
             # iterate over the indices for each file
             feedback = []  # {}
-            for key, value in in_dict.items():
+            for key, value in inDict.items():
                 np_dict = value["collection"].targets[0]
                 # different key for each file, we ignore it for now, only interested in values
-
                 # define empty hists
                 np_hist = np.array([])
-                np_0b = np.load(
-                    np_dict.path
-                )  # np.load(np_dict["job_{}_N0b".format(i)].path)
-                np_hist = np.append(np_hist, np_0b[:, var_names.index(var.name)])
+                np_0b = np.load(np_dict.path)  # np.load(np_dict["job_{}_N0b".format(i)].path)
+                np_hist = np.append(np_hist, np_0b[:, varNames.index(var.name)])
                 # integrate hist
-                bins = np.arange(
-                    var.binning[1],
-                    var.binning[2],
-                    (var.binning[2] - var.binning[1]) / var.binning[0],
-                )
+                bins = np.arange(var.binning[1], var.binning[2], (var.binning[2] - var.binning[1]) / var.binning[0])
                 back = np.sum(np.histogram(np_hist, bins=bins)[0])
-                plt.hist(
-                    np_hist,
-                    bins=bins,
-                    histtype="step",
-                    label=key + ": {}".format(back),
-                    density=self.density,
-                )
+                plt.hist(np_hist, bins=bins, histtype="step", label=key + ": {}".format(back), density=self.density)
                 # feedback.update({key:np.sum(back[0])})
                 feedback.append(back)
             # sorting the labels/handels of the plt hist by descending magnitude of integral
@@ -377,50 +201,26 @@ class ArrayPlotting(CoffeaTask):
 
 
 class DNNHistoryPlotting(DNNTask):
-
     """
     opening history callback and plotting curves for training
     """
-
     def requires(self):
         return (
-            PytorchMulticlass.req(
-                self,
-                n_layers=self.n_layers,
-                n_nodes=self.n_nodes,
-                dropout=self.dropout,
-                batch_size=self.batch_size,
-                learning_rate=self.learning_rate,  # , debug=True
-            ),
-        )
+            PytorchMulticlass.req(self, n_layers=self.n_layers, n_nodes=self.n_nodes, dropout=self.dropout, batch_size=self.batch_size, learning_rate=self.learning_rate))
 
     def output(self):
-        return {
-            "loss_plot": self.local_target("torch_loss_plot.png"),
-            "acc_plot": self.local_target("torch_acc_plot.png"),
-        }
+        return {"loss_plot": self.local_target("torch_loss_plot.png"), "acc_plot": self.local_target("torch_acc_plot.png")}
 
     def store_parts(self):
         # make plots for each use case
-        return (
-            super(DNNHistoryPlotting, self).store_parts()
-            + (self.analysis_choice,)
-            # + (self.channel,)
-            # + (self.n_layers,)
-            + (self.n_nodes,)
-            + (self.dropout,)
-            + (self.batch_size,)
-            + (self.learning_rate,)
-        )
+        return (super(DNNHistoryPlotting, self).store_parts() + (self.analysis_choice,) + (self.n_nodes,) + (self.dropout,) + (self.batch_size,) + (self.learning_rate,))
 
     @law.decorator.timeit(publish_message=True)
     @law.decorator.notify
     @law.decorator.safe_output
     def run(self):
         # retrieve history callback for trainings
-        accuracy_stats = (
-            self.input()[0]["collection"].targets[0]["accuracy_stats"].load()
-        )
+        accuracy_stats = (self.input()[0]["collection"].targets[0]["accuracy_stats"].load())
         loss_stats = self.input()[0]["collection"].targets[0]["loss_stats"].load()
 
         # read in values, skip first for val since Trainer does a validation step beforehand
@@ -431,12 +231,7 @@ class DNNHistoryPlotting(DNNTask):
         val_acc = accuracy_stats["val"]
 
         self.output()["loss_plot"].parent.touch()
-        plt.plot(
-            np.arange(0, len(val_loss), 1),
-            val_loss,
-            label="loss on valid data",
-            color="orange",
-        )
+        plt.plot(np.arange(0, len(val_loss), 1), val_loss, label="loss on valid data", color="orange",)
         plt.plot(
             np.arange(1, len(train_loss) + 1, 1),
             train_loss,

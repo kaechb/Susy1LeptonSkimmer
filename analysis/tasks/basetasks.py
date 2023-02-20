@@ -6,21 +6,17 @@ Base task classes that are used across the analysis.
 __all__ = ["AnalysisTask", "ConfigTask", "ShiftTask", "DatasetTask"]
 
 import os
-
 import luigi
 import law
 import order as od
 import importlib
 import math
-
 from utils.sandbox import CMSSWSandboxTask
-
 # define which implemented loaders we want to use
-law.contrib.load(
-    "numpy", "tasks", "root", "htcondor", "hdf5", "coffea", "matplotlib"
-)  # "wlcg",
+law.contrib.load("numpy", "tasks", "root", "htcondor", "hdf5", "coffea", "matplotlib"
+)
 """
-Collection of different standard task definition, each extending the dfinitions
+Collection of different standard task definition, each extending the definitions
 -Basetask defines basic functions
 -Campaign task adds the config instance needed everywhere, loads it from the respective config directory
 -Analysis task defines the namespace TODO: get it from $PATH
@@ -33,7 +29,6 @@ Collection of different standard task definition, each extending the dfinitions
 class BaseTask(law.Task):
     version = luigi.Parameter(default="dev1", description="version of current workflow")
     # notify = law.telegram.NotifyTelegramParameter()
-
     # exclude_params_req = {"notify"}
     # exclude_params_branch = {"notify"}
     # exclude_params_workflow = {"notify"}
@@ -44,8 +39,7 @@ class BaseTask(law.Task):
     def local_path(self, *path):
         parts = [str(p) for p in self.store_parts() + path]
         return os.path.join("/nfs/dust/cms/group/susy-desy/Susy1Lepton", *parts)
-        # return os.path.join(os.environ["DHA_STORE"], *parts)
-
+        
     # def wlcg_path(self, *path):
     # parts = [str(p) for p in self.store_parts() + path]
     # return os.path.join(*parts)
@@ -61,9 +55,8 @@ class BaseTask(law.Task):
     # cls = law.wlcg.WLCGFileTarget if args else law.wlcg.WLCGDirectoryTarget
     # return cls(self.wlcg_path(*args), **kwargs)
 
-
 class CampaignTask(BaseTask):
-    year = luigi.Parameter(description="Year", default="2016")
+    year = luigi.Parameter(description="Year", default="2017")
     config = luigi.Parameter(default="SUSY_1lep_ML", description="current analysis")
     analysis_choice = "common"
 
@@ -84,14 +77,9 @@ class CampaignTask(BaseTask):
 class AnalysisTask(CampaignTask):
     # analysis_id = "mj"
     analysis_id = "0b"
-    # luigi.Parameter(
-    # default="mj",
-    # description="type of analysis, start with mj",
-    # )
+    # luigi.Parameter(default="mj",description="type of analysis, start with mj",)
     # os.environ["DHA_ANALYSIS_ID"]
-
     task_namespace = "{}".format(analysis_id)
-
     analysis_choice = analysis_id
 
     def __init__(self, *args, **kwargs):
@@ -139,6 +127,7 @@ class DNNTask(ConfigTask):
 
 
 class ShiftTask(ConfigTask):
+    """what does this do?"""
 
     shift = luigi.Parameter(
         default="nominal",
@@ -146,9 +135,7 @@ class ShiftTask(ConfigTask):
         description="systematic shift to " "apply, default: nominal",
     )
     effective_shift = luigi.Parameter(default="nominal")
-
     shifts = set()
-
     exclude_params_index = {"effective_shift"}
     exclude_params_req = {"effective_shift"}
     exclude_params_sandbox = {"effective_shift"}
@@ -157,18 +144,15 @@ class ShiftTask(ConfigTask):
     def modify_param_values(cls, params):
         if params["shift"] == "nominal":
             return params
-
         # shift known to config?
         config_inst = od.Config(cls.config)
         if params["shift"] not in config_inst.shifts:
             raise Exception(
                 "shift {} unknown to config {}".format(params["shift"], config_inst)
             )
-
         # check if the shift is known to the task
         if params["shift"] in cls.shifts:
             params["effective_shift"] = params["shift"]
-
         return params
 
     def __init__(self, *args, **kwargs):
@@ -290,51 +274,3 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
     # self.htcondor_job_manager_defaults, kwargs)
     # return HTCondorJobManagerRWTH(**kwargs)
 
-
-class InstallCMSSWCode(CMSSWSandboxTask, law.tasks.RunOnceTask, DatasetTask):
-
-    clean = luigi.BoolParameter(
-        default=False, description="run 'scram b clean' before installing"
-    )
-    cores = luigi.IntParameter(
-        default=1, description="the number of cores for compilation"
-    )
-
-    # task_namespace = "{}".format(os.environ["DHA_ANALYSIS_ID"])
-
-    # version = None
-
-    @law.decorator.notify
-    def run(self):
-        import os
-        import shutil
-
-        # copy the current cmssw code to the CMSSW_BASE directory
-        CMSSW_BASE = "/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_2_13"
-        """
-        src = os.path.join(os.environ["DHA_BASE"], "cmssw", subsystem)
-        dst = os.path.join(os.environ["CMSSW_BASE"], "src", subsystem)
-        if os.path.exists(dst):
-                shutil.rmtree(dst)
-            shutil.copytree(src, dst)
-            self.publish_message("created package {}".format(dst))
-        """
-
-        # build the command
-        cmd = "scram b -j {}".format(self.cores)
-        if self.clean:
-            cmd = "scram b clean; {}".format(cmd)
-
-        # run the command
-        code = law.util.interruptable_popen(
-            cmd,
-            shell=True,
-            executable="/bin/bash",
-            # cwd=os.path.join(os.environ["CMSSW_BASE"], "src"),
-            cwd=os.path.join(CMSSW_BASE),
-        )[0]
-        if code != 0:
-            raise Exception("scram build failed")
-
-        # mark as complete
-        self.mark_complete()
