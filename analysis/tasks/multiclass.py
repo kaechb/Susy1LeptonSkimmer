@@ -10,7 +10,7 @@ import sklearn as sk
 import sklearn.model_selection as skm
 from rich.console import Console
 
-from tasks.basetasks import DNNTask, HTCondorWorkflow
+from tasks.base import DNNTask, HTCondorWorkflow
 from tasks.arraypreparation import ArrayNormalisation
 
 """

@@ -16,8 +16,8 @@ from rich.console import Console
 import logging
 
 # other modules
-from tasks.basetasks import DatasetTask, HTCondorWorkflow
-from utils.CoffeaBase import *
+from tasks.base import DatasetTask, HTCondorWorkflow
+from utils.coffea_base import *
 from tasks.makefiles import WriteFileset
 
 logger = logging.getLogger(__name__)

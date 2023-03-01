@@ -15,7 +15,7 @@ action() {
     export CMSSW_VERSION="CMSSW_10_3_0"
     # "$CMSSW_VERSION" CMSSW_10_2_13
     #export CMSSW_BASE="$CMSSW_BASE"
-	export CMSSW_BASE="/nfs/dust/cms/user/frengelk/Code/cmssw/CMSSW_10_3_0"
+	export CMSSW_BASE="/nfs/dust/cms/user/$USER/Code/cmssw/CMSSW_10_3_0"
 
 
 
@@ -87,9 +87,9 @@ action() {
   . /cvmfs/grid.cern.ch/umd-c7ui-latest/etc/profile.d/setup-c7-ui-example.sh
 
   # add missing python packages to cmssw
-  export EXTERNAL_CMSSW="/nfs/dust/cms/user/frengelk/Code/cmssw_software/external_cmssw"
+  export EXTERNAL_CMSSW="/nfs/dust/cms/user/$USER/Code/cmssw_software/external_cmssw"
 
-  export CONDA_PYTHONPATH="/nfs/dust/cms/user/frengelk/Anaconda/bin/python"
+  export CONDA_PYTHONPATH="/nfs/dust/cms/user/$USER/Anaconda/bin/python"
 
   _addpy() {
   [ ! -z "$1" ] && export PYTHONPATH="$1:$PYTHONPATH"

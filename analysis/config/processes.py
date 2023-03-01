@@ -1,5 +1,4 @@
 # coding: utf-8
-
 """
 Physics processes.
 If not stated otherwise, cross sections are given in pb.
@@ -9,54 +8,11 @@ declare processes by overall process
 
 each process needs an unique number, (label) and a xsec (defined on the fileset)
 """
-
-
 import order as od
 import scinum as sn
 from math import inf
-
 from config.constants import *
-
-"""
-od.Process("data", 0, is_data=True, label=r"data", color=(0, 0, 0), processes=[
-    od.Process("data_dl", 1, is_data=True, label=r"data", processes=[
-        od.Process("data_ee", 3, is_data=True, label=r"data"),
-        od.Process("data_emu", 4, is_data=True, label=r"data"),
-        od.Process("data_mumu", 5, is_data=True, label=r"data"),
-    ]),
-    od.Process("data_sl", 2, is_data=True, label=r"data", processes=[
-        od.Process("data_e", 6, is_data=True, label=r"data"),
-        od.Process("data_mu", 7, is_data=True, label=r"data"),
-    ]),
-])
-"""
-
-
 def setup_processes(cfg):
-    # build processes
-    """
-    cfg.add_process(
-        "TTJets",
-        100,
-        label=r"$t\Bar{t}$ Jets",
-        label_short="TTJ",
-        color=(1, 90, 184),
-        xSections={
-            13: sn.Number(1234.0 / 56, ("rel", 0.07)),
-        },
-    )
-    cfg.add_process(
-        "TTJets_2",
-        101,
-        label=r"$t\Bar{t}$ Jets",
-        label_short="TTJ",
-        color=(90, 120, 150),
-        xSections={
-            13: sn.Number(2468.0 / 56, ("rel", 0.07)),
-        },
-    )
-    """
-
     ### signal ###
     cfg.add_process(
         "T5qqqqVV",
@@ -64,24 +20,12 @@ def setup_processes(cfg):
         label=r"T5qqqqVV",
         label_short="T5",
         color=(100, 100, 100),
-        xSections={
+        xsecs={
             13: sn.Number(0.1),  # FIXME
         },
     )
-
-    cfg.add_process(
-        "T1tttt",
-        2,
-        label=r"T1tttt",
-        label_short="T1",
-        color=(150, 150, 150),
-        xSections={
-            13: sn.Number(0.1),  # FIXME
-        },
-    )
-
+    cfg.add_process("T1tttt",2,label=r"T1tttt",label_short="T1",color=(150, 150, 150),xsecs={13: sn.Number(0.1)})  # FIXME,
     #### MC ####
-
     cfg.add_process(
         "TTJets",
         100,
@@ -93,7 +37,7 @@ def setup_processes(cfg):
                 "TTJets_sl_fromt",
                 101,
                 label=r"TTJets sl t",
-                xSections={
+                xsecs={
                     13: sn.Number(182.18),
                 },
             ),
@@ -101,7 +45,7 @@ def setup_processes(cfg):
                 "TTJets_sl_fromtbar",
                 102,
                 label=r"TTJets sl tbar",
-                xSections={
+                xsecs={
                     13: sn.Number(182.18),
                 },
             ),
@@ -109,7 +53,7 @@ def setup_processes(cfg):
                 "TTJets_dilep",
                 103,
                 label=r"TTJets dl",
-                xSections={
+                xsecs={
                     13: sn.Number(87.315),
                 },
             ),
@@ -117,7 +61,7 @@ def setup_processes(cfg):
                 "TTJets_HT600to800",
                 104,
                 label=r"TTJets HT 600-800",
-                xSections={
+                xsecs={
                     13: sn.Number(2.76),
                 },
             ),
@@ -125,7 +69,7 @@ def setup_processes(cfg):
                 "TTJets_HT800to1200",
                 105,
                 label=r"TTJets HT 800-1200",
-                xSections={
+                xsecs={
                     13: sn.Number(1.116),
                 },
             ),
@@ -133,7 +77,7 @@ def setup_processes(cfg):
                 "TTJets_HT1200to2500",
                 106,
                 label=r"TTJets HT 1200-2500",
-                xSections={
+                xsecs={
                     13: sn.Number(0.198),
                 },
             ),
@@ -141,7 +85,7 @@ def setup_processes(cfg):
                 "TTJets_HT2500toInf",
                 107,
                 label=r"TTJets HT 2500-Inf",
-                xSections={
+                xsecs={
                     13: sn.Number(0.002),
                 },
             ),
@@ -159,7 +103,7 @@ def setup_processes(cfg):
                 "QCD_HT100to200",
                 201,
                 label=r"QCD HT 100-200",
-                xSections={
+                xsecs={
                     13: sn.Number(27990000),
                 },
             ),
@@ -167,7 +111,7 @@ def setup_processes(cfg):
                 "QCD_HT200to300",
                 202,
                 label=r"QCD HT 200-300",
-                xSections={
+                xsecs={
                     13: sn.Number(1712000),
                 },
             ),
@@ -175,7 +119,7 @@ def setup_processes(cfg):
                 "QCD_HT300to500",
                 203,
                 label=r"QCD HT 300-500",
-                xSections={
+                xsecs={
                     13: sn.Number(347700),
                 },
             ),
@@ -183,7 +127,7 @@ def setup_processes(cfg):
                 "QCD_HT500to700",
                 204,
                 label=r"QCD HT 500-700",
-                xSections={
+                xsecs={
                     13: sn.Number(32100),
                 },
             ),
@@ -191,13 +135,13 @@ def setup_processes(cfg):
                 "QCD_HT700to1000",
                 205,
                 label=r"QCD HT 700-1000",
-                xSections={13: sn.Number(6831)},
+                xsecs={13: sn.Number(6831)},
             ),
             od.Process(
                 "QCD_HT1000to1500",
                 206,
                 label=r"QCD HT 1000-1500",
-                xSections={
+                xsecs={
                     13: sn.Number(1207),
                 },
             ),
@@ -205,13 +149,13 @@ def setup_processes(cfg):
                 "QCD_HT1500to2000",
                 207,
                 label=r"QCD HT 1500-2000",
-                xSections={13: sn.Number(119.9)},
+                xsecs={13: sn.Number(119.9)},
             ),
             od.Process(
                 "QCD_HT2000toInf",
                 208,
                 label=r"QCD HT 2000-Inf",
-                xSections={
+                xsecs={
                     13: sn.Number(25.24),
                 },
             ),
@@ -229,7 +173,7 @@ def setup_processes(cfg):
                 "WJets_HT70to100",
                 301,
                 label=r"WJets HT 70-100",
-                xSections={
+                xsecs={
                     13: sn.Number(1353),
                 },
             ),
@@ -237,7 +181,7 @@ def setup_processes(cfg):
                 "WJets_HT100to200",
                 302,
                 label=r"WJets HT 100-200",
-                xSections={
+                xsecs={
                     13: sn.Number(1627.45),
                 },
             ),
@@ -245,7 +189,7 @@ def setup_processes(cfg):
                 "WJets_HT200to400",
                 303,
                 label=r"WJets HT 200-400",
-                xSections={
+                xsecs={
                     13: sn.Number(435.237),
                 },
             ),
@@ -253,7 +197,7 @@ def setup_processes(cfg):
                 "WJets_HT400to600",
                 304,
                 label=r"WJets HT 400-600",
-                xSections={
+                xsecs={
                     13: sn.Number(59.181),
                 },
             ),
@@ -261,13 +205,13 @@ def setup_processes(cfg):
                 "WJets_HT600to800",
                 305,
                 label=r"WJets HT 600-800",
-                xSections={13: sn.Number(14.581)},
+                xsecs={13: sn.Number(14.581)},
             ),
             od.Process(
                 "WJets_HT800to1200",
                 306,
                 label=r"WJets HT 800-1200",
-                xSections={
+                xsecs={
                     13: sn.Number(6.656),
                 },
             ),
@@ -275,13 +219,13 @@ def setup_processes(cfg):
                 "WJets_HT1200to2500",
                 307,
                 label=r"WJets HT 1200-2500",
-                xSections={13: sn.Number(1.608)},
+                xsecs={13: sn.Number(1.608)},
             ),
             od.Process(
                 "WJets_HT2500toInf",
                 308,
                 label=r"WJets HT 2500-Inf",
-                xSections={
+                xsecs={
                     13: sn.Number(0.039),
                 },
             ),
@@ -299,7 +243,7 @@ def setup_processes(cfg):
                 "DY_HT70to100",
                 401,
                 label=r"DY HT 70-100",
-                xSections={
+                xsecs={
                     13: sn.Number(208.977),
                 },
             ),
@@ -307,7 +251,7 @@ def setup_processes(cfg):
                 "DY_HT100to200",
                 402,
                 label=r"DY HT 100-200",
-                xSections={
+                xsecs={
                     13: sn.Number(181.305),
                 },
             ),
@@ -315,7 +259,7 @@ def setup_processes(cfg):
                 "DY_HT200to400",
                 403,
                 label=r"DY HT 200-400",
-                xSections={
+                xsecs={
                     13: sn.Number(50.148),
                 },
             ),
@@ -323,7 +267,7 @@ def setup_processes(cfg):
                 "DY_HT400to600",
                 404,
                 label=r"DY HT 400-600",
-                xSections={
+                xsecs={
                     13: sn.Number(6.984),
                 },
             ),
@@ -331,13 +275,13 @@ def setup_processes(cfg):
                 "DY_HT600to800",
                 405,
                 label=r"DY HT 600-800",
-                xSections={13: sn.Number(1.681)},
+                xsecs={13: sn.Number(1.681)},
             ),
             od.Process(
                 "DY_HT800to1200",
                 406,
                 label=r"DY HT 800-1200",
-                xSections={
+                xsecs={
                     13: sn.Number(0.775),
                 },
             ),
@@ -345,13 +289,13 @@ def setup_processes(cfg):
                 "DY_HT1200to2500",
                 407,
                 label=r"DY HT 1200-2500",
-                xSections={13: sn.Number(0.186)},
+                xsecs={13: sn.Number(0.186)},
             ),
             od.Process(
                 "DY_HT2500toInf",
                 408,
                 label=r"DY HT 2500-Inf",
-                xSections={
+                xsecs={
                     13: sn.Number(0.004),
                 },
             ),
@@ -369,7 +313,7 @@ def setup_processes(cfg):
                 "st_tW_top",
                 501,
                 label=r"st tW top",
-                xSections={
+                xsecs={
                     13: sn.Number(35.85),
                 },
             ),
@@ -377,7 +321,7 @@ def setup_processes(cfg):
                 "st_tW_antitop",
                 502,
                 label=r"st tW antitop",
-                xSections={
+                xsecs={
                     13: sn.Number(35.85),
                 },
             ),
@@ -385,7 +329,7 @@ def setup_processes(cfg):
                 "st_tW_antitop_no_fh",
                 503,
                 label=r"s antitop no fh",
-                xSections={
+                xsecs={
                     13: sn.Number(16.295),
                 },
             ),
@@ -393,7 +337,7 @@ def setup_processes(cfg):
                 "st_tW_top_no_fh",
                 504,
                 label=r"s top no fh",
-                xSections={
+                xsecs={
                     13: sn.Number(16.295),
                 },
             ),
@@ -401,13 +345,13 @@ def setup_processes(cfg):
                 "st_schannel_4f",
                 505,
                 label=r"st s 4f",
-                xSections={13: sn.Number(3.360)},
+                xsecs={13: sn.Number(3.360)},
             ),
             od.Process(
                 "st_tchannel_4f_incl",
                 506,
                 label=r"st t_ch incl",
-                xSections={
+                xsecs={
                     13: sn.Number(136.02),
                 },
             ),
@@ -415,7 +359,7 @@ def setup_processes(cfg):
                 "st_tchannel_antitop_4f_incl",
                 507,
                 label=r"santit t_ch incl",
-                xSections={13: sn.Number(80.97)},
+                xsecs={13: sn.Number(80.97)},
             ),
         ],
     )
@@ -431,7 +375,7 @@ def setup_processes(cfg):
                 "TTZ_llnunu",
                 601,
                 label=r"TTZ ll nu nu",
-                xSections={
+                xsecs={
                     13: sn.Number(0.253),
                 },
             ),
@@ -439,7 +383,7 @@ def setup_processes(cfg):
                 "TTZ_qq",
                 602,
                 label=r"TTZ qq",
-                xSections={
+                xsecs={
                     13: sn.Number(0.530),
                 },
             ),
@@ -447,7 +391,7 @@ def setup_processes(cfg):
                 "TTWjets_lnu",
                 603,
                 label=r"TTW+jets l nu",
-                xSections={
+                xsecs={
                     13: sn.Number(0.204),
                 },
             ),
@@ -455,7 +399,7 @@ def setup_processes(cfg):
                 "TTWjets_qq",
                 604,
                 label=r"TTW+jets qq",
-                xSections={
+                xsecs={
                     13: sn.Number(0.406),
                 },
             ),
@@ -463,13 +407,13 @@ def setup_processes(cfg):
                 "WW_llnunu",
                 605,
                 label=r"WW ll nu nu",
-                xSections={13: sn.Number(12.178)},
+                xsecs={13: sn.Number(12.178)},
             ),
             od.Process(
                 "WW_lnuqq",
                 606,
                 label=r"WW l nu qq",
-                xSections={
+                xsecs={
                     13: sn.Number(49.997),
                 },
             ),
@@ -477,13 +421,13 @@ def setup_processes(cfg):
                 "WZ_lnuqq",
                 607,
                 label=r"WZ l nu qq",
-                xSections={13: sn.Number(10.71)},
+                xsecs={13: sn.Number(10.71)},
             ),
             od.Process(
                 "WZ_lnununu",
                 608,
                 label=r"WZ l nununu",
-                xSections={
+                xsecs={
                     13: sn.Number(3.033),
                 },
             ),
@@ -491,7 +435,7 @@ def setup_processes(cfg):
                 "WZ_llqq",
                 609,
                 label=r"WZ ll qq",
-                xSections={
+                xsecs={
                     13: sn.Number(5.595),
                 },
             ),
@@ -499,7 +443,7 @@ def setup_processes(cfg):
                 "ZZ_qqnunu",
                 610,
                 label=r"ZZ qq nunu",
-                xSections={
+                xsecs={
                     13: sn.Number(4.033),
                 },
             ),
@@ -507,7 +451,7 @@ def setup_processes(cfg):
                 "ZZ_llnunu",
                 611,
                 label=r"ZZ ll nunu",
-                xSections={
+                xsecs={
                     13: sn.Number(0.564),
                 },
             ),
@@ -515,13 +459,13 @@ def setup_processes(cfg):
                 "ZZ_ll_qq",
                 612,
                 label=r"ZZ ll qq",
-                xSections={13: sn.Number(3.22)},
+                xsecs={13: sn.Number(3.22)},
             ),
             od.Process(
                 "tZq_ll4f",
                 613,
                 label=r"tZq ll 4f",
-                xSections={
+                xsecs={
                     13: sn.Number(0.0758),
                 },
             ),
@@ -592,160 +536,4 @@ def setup_processes(cfg):
             od.Process("data_MET_H", 908, label=r"data", is_data=True),
         ],
     )
-    """
 
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-
-        cfg.add_process(
-        ,
-        ,
-        label=r"",
-        label_short="",
-        color=(,,),
-        xSections={
-            13: sn.Number()),
-        },
-    )
-"""

@@ -3,7 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-analyis/tmp/
+analyis/tmp/.law/index
+analysis/tmp/
 lightning_logs/
 
 # C extensions
